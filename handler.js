@@ -101,10 +101,10 @@ export const drip = async (event) => {
   const isValidBabtAddress = !!/^(0x)?[0-9a-f]{40}$/i.test(babtAddress);
   const isValidKmaAddress = isValidSubstrateAddress(kmaAddress);
 
-  const prior = (isValidBabtAddress)
+  const prior = (isValidBabtAddress && isValidKmaAddress)
     ? (await getPriorDrips(babtAddress))
     : false;
-  const hasBabtBalance = (isValidBabtAddress)
+  const hasBabtBalance = (isValidBabtAddress && isValidKmaAddress)
     ? (await hasBalance(babtAddress))
     : false;
 

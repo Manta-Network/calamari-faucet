@@ -10,6 +10,7 @@ mkdir calamari-faucet && cd calamari-faucet
 curl -Lo ./.gitignore https://raw.githubusercontent.com/serverless/serverless-starter/master/.gitignore
 
 git init
+hub create Manta-Network/calamari-faucet
 
 yarn add serverless serverless-offline --dev
 # add '"type": "module"' to package.json

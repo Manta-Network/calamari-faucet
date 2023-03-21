@@ -64,8 +64,12 @@ const hasBalance = async (babtAddress) => {
   return !!json.result;
 };
 
-const getPriorDrips = async (babtAddress) => {
-  return await client.db('calamari-faucet').collection('babt-drip').findOne({ babtAddress });
+const getPriorDrips = async (babtAddress, kmaAddress) => {
+  const drips = (await Promise.all([
+    client.db('calamari-faucet').collection('babt-drip').findOne({ babtAddress }),
+    client.db('calamari-faucet').collection('babt-drip').findOne({ drip: { $elemMatch: { beneficiary: kmaAddress } } })
+  ])).filter((x) => (!!x));
+  return (drips.length > 0);
 };
 
 const recordDrip = async (babtAddress, kmaAddress, identity) => {
@@ -151,7 +155,7 @@ export const drip = async (event) => {
   const isValidKmaAddress = isValidSubstrateAddress(kmaAddress);
 
   const prior = (isValidBabtAddress && isValidKmaAddress)
-    ? (await getPriorDrips(babtAddress))
+    ? (await getPriorDrips(babtAddress, kmaAddress))
     : false;
   const hasBabtBalance = (isValidBabtAddress && isValidKmaAddress)
     ? (await hasBalance(babtAddress))

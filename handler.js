@@ -91,10 +91,12 @@ const recordDrip = async (babtAddress, kmaAddress, identity) => {
 };
 
 const dripNow = async (babtAddress, kmaAddress, identity) => {
+  let finalized = false;
   const provider = new WsProvider(calamariSocketUrl);
   const api = await ApiPromise.create({ provider });
   await Promise.all([ api.isReady, cryptoWaitReady() ]);
   const faucet = new Keyring({ type: 'sr25519' }).addFromMnemonic(process.env.calamari_faucet_mnemonic);
+  let { data: { free: previousFree }, nonce: previousNonce } = await api.query.system.account(kmaAddress);
   try {
     const unsub = await api.tx.balances
       .transfer(kmaAddress, BigInt(process.env.babt_kma_drip_amount))
@@ -110,14 +112,30 @@ const dripNow = async (babtAddress, kmaAddress, identity) => {
         }
         if (status.isFinalized) {
           console.log(`babt: ${babtAddress}, kma: ${kmaAddress}, status: ${status.type}, block hash: ${status.asFinalized}, transaction: ${txHash.toHex()}`);
-          await recordDrip(babtAddress, kmaAddress, identity);
+          await recordDrip(babtAddress, kmaAddress, { ip: identity.sourceIp, agent: identity.userAgent });
+          finalized = true;
           unsub();
         }
       });
   } catch (exception) {
     console.error(`babt: ${babtAddress}, kma: ${kmaAddress}, exception:`, exception);
   }
-  //return true;
+  api.query.system.account(kmaAddress, async ({ data: { free: currentFree }, nonce: currentNonce }) => {
+    const delta = currentFree.sub(previousFree);
+    if (!delta.isZero() && (BigInt(process.env.babt_kma_drip_amount) === BigInt(delta))) {
+      if ((BigInt(process.env.babt_kma_drip_amount) === BigInt(delta))) {
+        await recordDrip(babtAddress, kmaAddress, { ip: identity.sourceIp, agent: identity.userAgent });
+        finalized = true;
+      }
+      console.log(`babt: ${babtAddress}, kma: ${kmaAddress}, delta: ${delta}`);
+      previousFree = currentFree;
+      previousNonce = currentNonce;
+    }
+  });
+  while (!finalized) {
+    await new Promise(r => setTimeout(r, 1000));
+  }
+  return finalized;
 };
 
 export const drip = async (event) => {

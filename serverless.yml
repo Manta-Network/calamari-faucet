@@ -35,6 +35,7 @@ package:
 functions:
   drip:
     handler: handler.drip
+    timeout: 29
     environment:
       db_readwrite: ${ssm:/calamari_faucet_db_readwrite}
       calamari_faucet_mnemonic: ${ssm:/calamari_faucet_mnemonic}

@@ -36,7 +36,8 @@ functions:
   drip:
     handler: handler.drip
     environment:
-      api_token: ${ssm:/calamari_faucet_api_token}
+      db_readwrite: ${ssm:/calamari_faucet_db_readwrite}
+      babt_kma_drip_amount: ${ssm:/calamari_faucet_babt_kma_drip_amount}
     events:
       -
         http:

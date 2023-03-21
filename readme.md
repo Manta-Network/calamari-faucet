@@ -32,10 +32,10 @@ the serverless.yml contains lines like so:
           Resource: 'arn:aws:ssm:eu-central-1::parameter/calamari_faucet_*'
   ...
     environment:
-      api_token: ${ssm:/calamari_faucet_api_token}
+      db_readwrite: ${ssm:/calamari_faucet_db_readwrite}
 ```
 
-which sets the aws deployment region to `eu-central-1` and grants the lamda access to parameters beginning with `calamari_faucet_`. the lamda's dependencies should be in the same region as the lambda and may be configured at: https://eu-central-1.console.aws.amazon.com/systems-manager/parameters?region=eu-central-1, by creating parameters with names starting with `calamari_faucet_`. take care to set the type of the parameter to `SecureString` if it contains a secret. the configuration makes an environment variable named `api_token` available to the lambda function and sets its value from the parameter store's `calamari_faucet_api_token` value.
+which sets the aws deployment region to `eu-central-1` and grants the lamda access to parameters beginning with `calamari_faucet_`. the lamda's dependencies should be in the same region as the lambda and may be configured at: https://eu-central-1.console.aws.amazon.com/systems-manager/parameters?region=eu-central-1, by creating parameters with names starting with `calamari_faucet_`. take care to set the type of the parameter to `SecureString` if it contains a secret. the configuration makes an environment variable named `db_readwrite` available to the lambda function and sets its value from the parameter store's `calamari_faucet_db_readwrite` value.
 
 #### test
 this project can be run locally like so:

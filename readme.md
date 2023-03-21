@@ -67,12 +67,12 @@ Deploying calamari-faucet to stage prod (eu-central-1)
 
 ✔ Service deployed to stack calamari-faucet-prod (34s)
 
-endpoint: GET - https://muhnq5ml7j.execute-api.eu-central-1.amazonaws.com/prod/account/{babtAddress}/{kmaAddress}
+endpoint: GET - https://muhnq5ml7j.execute-api.eu-central-1.amazonaws.com/prod/drip/{babtAddress}/{kmaAddress}
 functions:
   drip: calamari-faucet-prod-drip (114 kB)
 ```
 
-eg: https://muhnq5ml7j.execute-api.eu-central-1.amazonaws.com/prod/account/asdf/hjkl
+eg: https://muhnq5ml7j.execute-api.eu-central-1.amazonaws.com/prod/drip/asdf/hjkl
 
 #### deployment credentials
 

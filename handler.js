@@ -1,10 +1,14 @@
 'use strict';
 
+import { ApiPromise, WsProvider, Keyring } from '@polkadot/api';
 import { decodeAddress, encodeAddress } from '@polkadot/keyring';
 import { hexToU8a, isHex } from '@polkadot/util';
+import { cryptoWaitReady } from '@polkadot/util-crypto';
 
 import { MongoClient } from 'mongodb';
 const client = new MongoClient(process.env.db_readwrite);
+
+const calamariSocketUrl = 'wss://ws.calamari.systems';
 
 // see: https://www.binance.com/en/blog/all/get-started-on-bnb-smart-chain-in-60-seconds-421499824684901055
 const binanceRpcEndpoint = 'https://bsc-dataseed.binance.org';
@@ -64,7 +68,7 @@ const getPriorDrips = async (babtAddress) => {
   return await client.db('calamari-faucet').collection('babt-drip').findOne({ babtAddress });
 };
 
-const dripNow = async (babtAddress, kmaAddress, identity) => {
+const recordDrip = async (babtAddress, kmaAddress, identity) => {
   const update = await client.db('calamari-faucet').collection('babt-drip').updateOne(
     {
       babtAddress,
@@ -83,10 +87,37 @@ const dripNow = async (babtAddress, kmaAddress, identity) => {
       upsert: true,
     }
   );
-  if (update.acknowledged && !!update.upsertedCount) {
-    console.log(`inserted block: ${number}`);
+  return (update.acknowledged && !!update.upsertedCount);
+};
+
+const dripNow = async (babtAddress, kmaAddress, identity) => {
+  const provider = new WsProvider(calamariSocketUrl);
+  const api = await ApiPromise.create({ provider });
+  await Promise.all([ api.isReady, cryptoWaitReady() ]);
+  const faucet = new Keyring({ type: 'sr25519' }).addFromMnemonic(process.env.calamari_faucet_mnemonic);
+  try {
+    const unsub = await api.tx.balances
+      .transfer(kmaAddress, BigInt(process.env.babt_kma_drip_amount))
+      .signAndSend(faucet, async ({ events = [], status, txHash, dispatchError }) => {
+        if (dispatchError) {
+          if (dispatchError.isModule) {
+            const decoded = api.registry.findMetaError(dispatchError.asModule);
+            const { docs, name, section } = decoded;
+            console.log(`babt: ${babtAddress}, kma: ${kmaAddress}, status: ${status.type}, dispatch error: ${section}.${name} - ${docs.join(' ')}`);
+          } else {
+            console.log(`babt: ${babtAddress}, kma: ${kmaAddress}, status: ${status.type}, dispatch error: ${dispatchError.toString()}`);
+          }
+        }
+        if (status.isFinalized) {
+          console.log(`babt: ${babtAddress}, kma: ${kmaAddress}, status: ${status.type}, block hash: ${status.asFinalized}, transaction: ${txHash.toHex()}`);
+          await recordDrip(babtAddress, kmaAddress, identity);
+          unsub();
+        }
+      });
+  } catch (exception) {
+    console.error(`babt: ${babtAddress}, kma: ${kmaAddress}, exception:`, exception);
   }
-  return !!process.env.api_token && true;
+  //return true;
 };
 
 export const drip = async (event) => {
@@ -130,7 +161,7 @@ export const drip = async (event) => {
                   : 'drip-fail',
       },
       null,
-      2 
+      2
     ),
   };
 };

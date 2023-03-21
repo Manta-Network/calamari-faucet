@@ -1,8 +1,23 @@
 'use strict';
 
+// see: https://www.binance.com/en/blog/all/get-started-on-bnb-smart-chain-in-60-seconds-421499824684901055
+const binanceRpcEndpoint = 'https://bsc-dataseed.binance.org';
+
+// thanks megan!
+const babtSmartContract = '0x2b09d47d550061f995a3b5c6f0fd58005215d7c8';
+
+// first 4 bytes of keccak-256 hash of `balanceOf(address)`
+// computed with https://emn178.github.io/online-tools/keccak_256.html
+const methodSignature = '0x70a08231';
+
 const hasBalance = async (babtAddress) => {
+  /*
+  see:
+  - https://bscscan.com/token/0x2b09d47d550061f995a3b5c6f0fd58005215d7c8#readProxyContract
+  - https://docs.soliditylang.org/en/latest/abi-spec.html
+  */
   const response = await fetch(
-    'https://bsc-dataseed.binance.org',
+    binanceRpcEndpoint,
     {
       method: 'POST',
       headers: {
@@ -14,8 +29,8 @@ const hasBalance = async (babtAddress) => {
         method: 'eth_call',
         params: [
           {
-            to: '0x2b09d47d550061f995a3b5c6f0fd58005215d7c8',
-            data: `0x70a08231000000000000000000000000${babtAddress.slice(-40)}`
+            to: babtSmartContract,
+            data: `${methodSignature}000000000000000000000000${babtAddress.slice(-40)}`
           },
           'latest'
         ]

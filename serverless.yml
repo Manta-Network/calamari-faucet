@@ -1,0 +1,50 @@
+service: calamari-faucet
+
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  stage: prod
+  profile: manta-service
+  region: eu-central-1
+  lambdaHashingVersion: 20201221
+  iam:
+    role:
+      name: calamari-faucet
+      # https://docs.aws.amazon.com/systems-manager/latest/userguide/sysman-paramstore-access.html
+      statements:
+        -
+          Effect: Allow
+          Action:
+            - 'ssm:DescribeParameters'
+          Resource: '*'
+        -
+          Effect: Allow
+          Action:
+            - 'ssm:GetParameter'
+          Resource: 'arn:aws:ssm:eu-central-1::parameter/calamari_faucet_*'
+
+plugins:
+  - serverless-offline
+useDotenv: true
+
+package:
+  excludeDevDependencies: true
+
+functions:
+  drip:
+    handler: handler.drip
+    environment:
+      api_token: ${ssm:/calamari_faucet_api_token}
+    events:
+      -
+        http:
+          path: account/{babtAddress}/{kmaAddress}
+          method: get
+          cors: true
+          request:
+            parameters:
+               paths:
+                 babtAddress: true
+                 kmaAddress: true

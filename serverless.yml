@@ -53,7 +53,7 @@ functions:
                  kmaAddress: true
   discovery:
     handler: handler.babtAccountDiscovery
-    timeout: 29
+    timeout: 30
     environment:
       db_readwrite: ${ssm:/calamari_faucet_db_readwrite}
     events:

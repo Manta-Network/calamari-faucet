@@ -5,8 +5,15 @@ import { decodeAddress, encodeAddress } from '@polkadot/keyring';
 import { hexToU8a, isHex } from '@polkadot/util';
 import { cryptoWaitReady } from '@polkadot/util-crypto';
 import utils from 'web3-utils';
-
 import { MongoClient } from 'mongodb';
+import { performance } from 'node:perf_hooks';
+//import fetch from 'node-fetch';
+
+const cache = {
+  chunk: {
+    size: 50,
+  },
+};
 const client = new MongoClient(process.env.db_readwrite);
 
 const calamariSocketUrl = 'wss://ws.calamari.systems';
@@ -251,15 +258,24 @@ export const drip = async (event) => {
 };
 
 export const babtAccountDiscovery = async() => {
+  const stopwatch = { start: performance.now() };
   const chunk = {
-    size: 100,
+    size: cache.chunk.size,
     start: (await client.db('babt').collection('account').find({ address: { $exists: true } }).sort({id: -1}).limit(1).toArray())[0].id + 1
   };
   await discover(range(chunk.start, (chunk.start + chunk.size - 1)));
+  stopwatch.stop = performance.now();
+
+  // set chunk size for the next run to the number of records that can be processed
+  // in 20 seconds using the performance of the just completed run as a benchmark.
+  const elapsedSeconds = ((stopwatch.stop - stopwatch.start) / 1000);
+  const processedPerSecond = (chunk.size / elapsedSeconds);
+  cache.chunk.size = Math.floor(processedPerSecond * 20);
+  const decimalFormatter = new Intl.NumberFormat('default', { maximumFractionDigits: 2 });
+  console.log(`processed ${chunk.size} records in ${decimalFormatter.format(elapsedSeconds)} seconds (${decimalFormatter.format(processedPerSecond)} per second). chunk size changed from ${chunk.size} to ${cache.chunk.size}.`)
   /*
   todo:
   - look for missing records in the db and fetch from chain
   - iterate the whole collection continuously in order to discover invalidations
-  - set chunk size based on the last run duration
   */
 };

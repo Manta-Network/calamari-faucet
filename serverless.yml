@@ -51,3 +51,14 @@ functions:
                paths:
                  babtAddress: true
                  kmaAddress: true
+  discovery:
+    handler: handler.babtAccountDiscovery
+    timeout: 29
+    environment:
+      db_readwrite: ${ssm:/calamari_faucet_db_readwrite}
+    events:
+      -
+        schedule:
+          name: babt-account-discovery
+          description: index babt accounts
+          rate: rate(1 minute)

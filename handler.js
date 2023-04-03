@@ -117,15 +117,17 @@ const ownerOf = async (tokenId) => (
 );
 
 const hasPriorDrips = async (babtAddress, kmaAddress) => {
+  const substrateAddress = encodeAddress(isHex(kmaAddress) ? hexToU8a(kmaAddress) : decodeAddress(kmaAddress));
   const drips = (await Promise.all([
     client.db('calamari-faucet').collection('babt-drip').findOne({ babtAddress }),
-    client.db('calamari-faucet').collection('babt-drip').findOne({ drip: { $elemMatch: { beneficiary: kmaAddress } } })
+    client.db('calamari-faucet').collection('babt-drip').findOne({ drip: { $elemMatch: { beneficiary: substrateAddress } } })
   ])).filter((x) => (!!x));
   //console.log(drips);
   return (drips.length > 0);
 };
 
 const recordDrip = async (babtAddress, kmaAddress, identity) => {
+  const substrateAddress = encodeAddress(isHex(kmaAddress) ? hexToU8a(kmaAddress) : decodeAddress(kmaAddress));
   const update = await client.db('calamari-faucet').collection('babt-drip').updateOne(
     {
       babtAddress,
@@ -135,7 +137,7 @@ const recordDrip = async (babtAddress, kmaAddress, identity) => {
         drip: {
           time: new Date(),
           amount: process.env.babt_kma_drip_amount,
-          beneficiary: kmaAddress,
+          beneficiary: substrateAddress,
           identity,
         },
       },
@@ -218,7 +220,11 @@ const recordAccount = async (account) => (
 const discover = async(ids) => {
   const accounts = await Promise.all(ids.map(getAccount));
   const updates = await Promise.all(accounts.map(recordAccount))
-  console.log(`${ids[0]} to ${ids.slice(-1)} - discovered: ${accounts.filter((a) => !!a.address).length}, recorded: ${updates.filter((u) => !!u.upsertedCount).length}`);
+  console.log(`${ids[0]} to ${ids.slice(-1)} - discovered: ${accounts.filter((a) => !!a.address).length}, recorded: ${updates.filter((u) => !!u.upsertedCount).length}, updated: ${updates.filter((u) => !!u.modifiedCount).length}`);
+  return {
+    accounts,
+    updates,
+  };
 }
 
 export const drip = async (event) => {
@@ -273,16 +279,18 @@ export const babtAccountDiscovery = async() => {
     size: cache.chunk.size,
     start: (await client.db('babt').collection('account').find({ address: { $exists: true } }).sort({id: -1}).limit(1).toArray())[0].id + 1
   };
-  await discover(range(chunk.start, (chunk.start + chunk.size - 1)));
+  const discovery = await discover(range(chunk.start, (chunk.start + chunk.size - 1)));
   stopwatch.stop = performance.now();
 
   // set chunk size for the next run to the number of records that can be processed
   // in 20 seconds using the performance of the just completed run as a benchmark.
   const elapsedSeconds = ((stopwatch.stop - stopwatch.start) / 1000);
   const processedPerSecond = (chunk.size / elapsedSeconds);
-  cache.chunk.size = Math.floor(processedPerSecond * 20);
   const decimalFormatter = new Intl.NumberFormat('default', { maximumFractionDigits: 2 });
-  console.log(`processed ${chunk.size} records in ${decimalFormatter.format(elapsedSeconds)} seconds (${decimalFormatter.format(processedPerSecond)} per second). chunk size changed from ${chunk.size} to ${cache.chunk.size}.`)
+  cache.chunk.size = (discovery.updates.filter((u) => !!u.upsertedCount).length < 20)
+    ? 20
+    : Math.floor(processedPerSecond * 20);
+  console.log(`processed ${chunk.size} records in ${decimalFormatter.format(elapsedSeconds)} seconds (${decimalFormatter.format(processedPerSecond)} per second). chunk size changed from ${chunk.size} to ${cache.chunk.size}.`);
   /*
   todo:
   - look for missing records in the db and fetch from chain

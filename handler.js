@@ -53,11 +53,16 @@ const ethCall = async (endpoint, contract, method, parameters = [], tag = 'lates
   const params = [
     {
       to: contract,
-      data: `${methodSignature(method)}${parameters.map((p) => utils.padLeft(p, 64).slice(2)).join('')}`
+      data: `${methodSignature(method)}${parameters.map((p) => {
+        // utils.padLeft(utils.hexToBytes(address), 32)
+        const x = utils.padLeft(p, 64);
+        return x.startsWith('0x')
+          ? x.slice(2)
+          : x;
+      }).join('')}`
     },
     tag
   ];
-  //console.log({ endpoint, contract, method, parameters, tag, params });
   const response = await fetch(
     endpoint,
     {
@@ -73,12 +78,16 @@ const ethCall = async (endpoint, contract, method, parameters = [], tag = 'lates
       }),
     }
   );
-  return await response.json();
+  const json = await response.json();
+  //console.log({ endpoint, contract, method, parameters, tag, params, json });
+  return json;
 };
 
-const hasBalance = async (babtAddress) => (
-  !!(await balanceOf(babtAddress)).result
-);
+const hasBalance = async (babtAddress) => {
+  const balance = await balanceOf(babtAddress);
+  //console.log(balance);
+  return !!balance.result
+};
 
 /*
 see:
@@ -112,6 +121,7 @@ const hasPriorDrips = async (babtAddress, kmaAddress) => {
     client.db('calamari-faucet').collection('babt-drip').findOne({ babtAddress }),
     client.db('calamari-faucet').collection('babt-drip').findOne({ drip: { $elemMatch: { beneficiary: kmaAddress } } })
   ])).filter((x) => (!!x));
+  //console.log(drips);
   return (drips.length > 0);
 };
 
@@ -243,7 +253,7 @@ export const drip = async (event) => {
           ? 'invalid-babt-address'
           : (!isValidKmaAddress)
             ? 'invalid-kma-address'
-            : (!!prior && !!prior.drip && !!prior.drip.length)
+            : (prior)
               ? 'prior-drip-observed'
               : !hasBabtBalance
                 ? 'zero-balance-observed'

@@ -51,6 +51,22 @@ functions:
                paths:
                  babtAddress: true
                  kmaAddress: true
+  shortlist:
+    handler: handler.shortlist
+    timeout: 29
+    environment:
+      db_readwrite: ${ssm:/calamari_faucet_db_readwrite}
+      shortlist_signer: ${ssm:/calamari_faucet_shortlist_signer}
+    events:
+      -
+        http:
+          path: shortlist
+          method: post
+          cors: true
+          request:
+            parameters:
+               headers:
+                 Authorization: true
   discovery:
     handler: handler.babtAccountDiscovery
     timeout: 30

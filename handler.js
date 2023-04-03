@@ -2,8 +2,8 @@
 
 import { ApiPromise, WsProvider, Keyring } from '@polkadot/api';
 import { decodeAddress, encodeAddress } from '@polkadot/keyring';
-import { hexToU8a, isHex } from '@polkadot/util';
-import { cryptoWaitReady } from '@polkadot/util-crypto';
+import { hexToU8a, isHex, stringToU8a, u8aToHex } from '@polkadot/util';
+import { cryptoWaitReady, signatureVerify } from '@polkadot/util-crypto';
 import utils from 'web3-utils';
 import { MongoClient } from 'mongodb';
 import { performance } from 'node:perf_hooks';
@@ -16,10 +16,15 @@ const cache = {
 };
 const client = new MongoClient(process.env.db_readwrite);
 
-const calamariSocketUrl = 'wss://ws.calamari.systems';
+const endpoint = {
+  calamari: 'wss://ws.calamari.systems',
+  binance: 'https://bsc-dataseed.binance.org',
+  zqhxuyuan: 'wss://zenlink.zqhxuyuan.cloud:444',
+};
 
-// see: https://www.binance.com/en/blog/all/get-started-on-bnb-smart-chain-in-60-seconds-421499824684901055
-const binanceRpcEndpoint = 'https://bsc-dataseed.binance.org';
+const signer = {
+  dmvSXhJWeJEKTZT8CCUieJDaNjNFC4ZFqfUm4Lx1z7J7oFzBf: process.env.shortlist_signer,
+};
 
 // thanks megan!
 const babtSmartContract = '0x2b09d47d550061f995a3b5c6f0fd58005215d7c8';
@@ -94,7 +99,7 @@ see:
 - https://bscscan.com/token/0x2b09d47d550061f995a3b5c6f0fd58005215d7c8#readProxyContract#F3
 */
 const balanceOf = async (babtAddress) => (
-  await ethCall(binanceRpcEndpoint, babtSmartContract, 'balanceOf(address)', [babtAddress])
+  await ethCall(endpoint.binance, babtSmartContract, 'balanceOf(address)', [babtAddress])
 );
 
 const getAccount = async (id) => {
@@ -113,7 +118,7 @@ see:
 - https://bscscan.com/token/0x2b09d47d550061f995a3b5c6f0fd58005215d7c8#readProxyContract#F9
 */
 const ownerOf = async (tokenId) => (
-  await ethCall(binanceRpcEndpoint, babtSmartContract, 'ownerOf(uint256)', [tokenId])
+  await ethCall(endpoint.binance, babtSmartContract, 'ownerOf(uint256)', [tokenId])
 );
 
 const hasPriorDrips = async (babtAddress, kmaAddress) => {
@@ -151,7 +156,7 @@ const recordDrip = async (babtAddress, kmaAddress, identity) => {
 
 const dripNow = async (babtAddress, kmaAddress, identity) => {
   let finalized = false;
-  const provider = new WsProvider(calamariSocketUrl);
+  const provider = new WsProvider(endpoint.calamari);
   const api = await ApiPromise.create({ provider });
   await Promise.all([ api.isReady, cryptoWaitReady() ]);
   const faucet = new Keyring({ type: 'sr25519' }).addFromMnemonic(process.env.calamari_faucet_mnemonic);
@@ -270,6 +275,36 @@ export const drip = async (event) => {
       null,
       2
     ),
+  };
+};
+
+export const shortlist = async (event) => {
+  const response = {
+    ...(!!event.headers.Authorization && (event.headers.Authorization.split(' ').length === 2)) && {
+      signer: event.headers.Authorization.split(' ')[0],
+      signature: event.headers.Authorization.split(' ')[1],
+      payload: JSON.parse(event.body),
+    },
+  };
+  await cryptoWaitReady();
+  if (
+    isValidSubstrateAddress(response.signer)
+    && signatureVerify(JSON.stringify(JSON.parse(event.body)), hexToU8a(response.signature), u8aToHex(decodeAddress(response.signer))).isValid
+  ) {
+    const shortlistSigner = new Keyring({ type: 'sr25519' }).addFromMnemonic(signer[encodeAddress(decodeAddress(response.signer), 78)]);
+    const provider = new WsProvider(endpoint.zqhxuyuan);
+    const api = await ApiPromise.create({ provider });
+    await api.isReady;
+    await Promise.all(response.payload.shortlist.map((address) => api.tx.mantaSbt.allowlistEvmAccount({ Bab: address }).signAndSend(shortlistSigner)));
+  }
+  return {
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Credentials': true,
+      'Content-Type': 'application/json',
+    },
+    statusCode: 200, //isValid ? 200 : 401,
+    body: JSON.stringify(response, null, 2),
   };
 };
 

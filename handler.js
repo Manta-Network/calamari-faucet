@@ -280,44 +280,42 @@ export const drip = async (event) => {
   };
 };
 
-export const shortlist = async (event) => {
-  const response = {
-    ...(!!event.headers.Authorization && (event.headers.Authorization.split(' ').length === 2)) && {
-      signer: event.headers.Authorization.split(' ')[0],
-      signature: event.headers.Authorization.split(' ')[1],
-      payload: JSON.parse(event.body),
-    },
-  };
-  await cryptoWaitReady();
-  if (
-    isValidSubstrateAddress(response.signer)
-    && signatureVerify(JSON.stringify(JSON.parse(event.body)), hexToU8a(response.signature), u8aToHex(decodeAddress(response.signer))).isValid
-  ) {
-    const shortlistSigner = new Keyring({ type: 'sr25519' }).addFromMnemonic(signer[encodeAddress(decodeAddress(response.signer), 78)]);
-    const provider = new WsProvider(endpoint.zqhxuyuan);
-    const api = await ApiPromise.create({ provider });
-    await api.isReady;
-    await Promise.all(response.payload.shortlist.map((address) => api.tx.mantaSbt.allowlistEvmAccount({ Bab: address }).signAndSend(shortlistSigner)));
-  }
-  return {
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Credentials': true,
-      'Content-Type': 'application/json',
-    },
-    statusCode: 200, //isValid ? 200 : 401,
-    body: JSON.stringify(response, null, 2),
-  };
-};
+// export const shortlist = async (event) => {
+//   const response = {
+//     ...(!!event.headers.Authorization && (event.headers.Authorization.split(' ').length === 2)) && {
+//       signer: event.headers.Authorization.split(' ')[0],
+//       signature: event.headers.Authorization.split(' ')[1],
+//       payload: JSON.parse(event.body),
+//     },
+//   };
+//   await cryptoWaitReady();
+//   if (
+//     isValidSubstrateAddress(response.signer)
+//     && signatureVerify(JSON.stringify(JSON.parse(event.body)), hexToU8a(response.signature), u8aToHex(decodeAddress(response.signer))).isValid
+//   ) {
+//     const shortlistSigner = new Keyring({ type: 'sr25519' }).addFromMnemonic(signer[encodeAddress(decodeAddress(response.signer), 78)]);
+//     const provider = new WsProvider(endpoint.zqhxuyuan);
+//     const api = await ApiPromise.create({ provider });
+//     await api.isReady;
+//     await Promise.all(response.payload.shortlist.map((address) => api.tx.mantaSbt.allowlistEvmAccount({ Bab: address }).signAndSend(shortlistSigner)));
+//   }
+//   return {
+//     headers: {
+//       'Access-Control-Allow-Origin': '*',
+//       'Access-Control-Allow-Credentials': true,
+//       'Content-Type': 'application/json',
+//     },
+//     statusCode: 200, //isValid ? 200 : 401,
+//     body: JSON.stringify(response, null, 2),
+//   };
+// };
 
-export const shortlistOne = async (event) => {
-  const response = {
-      payload: JSON.parse(event.body),
-  };
+export const shortlist = async (event) => {
+  const payload = JSON.parse(event.body);
   await cryptoWaitReady();
   const isValid = false;
 
-  const eth_address = response.payload.shortlist; // only one address
+  const eth_address = payload.shortlist; // only one address
   const balance = await balanceOf(eth_address);
   if(!!balance) {
     const provider = new WsProvider(endpoint.zqhxuyuan);

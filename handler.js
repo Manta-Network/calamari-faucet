@@ -7,8 +7,6 @@ import { cryptoWaitReady, signatureVerify } from '@polkadot/util-crypto';
 import utils from 'web3-utils';
 import { MongoClient } from 'mongodb';
 import { performance } from 'node:perf_hooks';
-const ethers = require('ethers');
-const { hashMessage } = require("@ethersproject/hash");
 //import fetch from 'node-fetch';
 
 const cache = {
@@ -366,16 +364,6 @@ export const shortlist = async (event) => {
     body: JSON.stringify(result, null, 2),
   };
 };
-
-async function recoverAddressFromSignature(message, signature) {
-  // Hash the message
-  const messageHash = hashMessage(message);
-
-  // Recover the address
-  const recoveredAddress = ethers.utils.recoverAddress(messageHash, signature);
-
-  return recoveredAddress;
-}
 
 export const babtAccountDiscovery = async() => {
   const stopwatch = { start: performance.now() };

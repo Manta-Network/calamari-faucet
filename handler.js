@@ -7,6 +7,8 @@ import { cryptoWaitReady, signatureVerify } from '@polkadot/util-crypto';
 import utils from 'web3-utils';
 import { MongoClient } from 'mongodb';
 import { performance } from 'node:perf_hooks';
+const ethers = require('ethers');
+const { hashMessage } = require("@ethersproject/hash");
 //import fetch from 'node-fetch';
 
 const cache = {
@@ -313,12 +315,11 @@ export const shortlistOne = async (event) => {
       payload: JSON.parse(event.body),
   };
   await cryptoWaitReady();
-  const eth_address = response.payload.shortlist; // only one address
-  const eth_signature = response.payload.signatrure; // the signatrure of eth address
-  // TODO: check address from eth_signature should match eth_address
-
   const isValid = false;
-  if(hasBalance(eth_address)) {
+
+  const eth_address = response.payload.shortlist; // only one address
+  const balance = await balanceOf(eth_address);
+  if(!!balance) {
     const provider = new WsProvider(endpoint.zqhxuyuan);
     const api = await ApiPromise.create({ provider });
     await api.isReady;
@@ -330,17 +331,32 @@ export const shortlistOne = async (event) => {
     // query on chain data, make sure the address hasn't in allowlist
     const query_state = await api.query.mantaSbt.evmAddressAllowlist(address);
     if(query_state.isNone == 1) {
-      // use fixed account for now.
+      // TODO: use fixed account for now.
       const shortlistSigner = new Keyring({ type: 'sr25519' }).addFromMnemonic(signer["dmvSXhJWeJEKTZT8CCUieJDaNjNFC4ZFqfUm4Lx1z7J7oFzBf"]);
       
-      await api.tx.mantaSbt.allowlistEvmAccount(address).signAndSend(shortlistSigner);
+      const unsub = await api.tx.mantaSbt.allowlistEvmAccount(address)
+      .signAndSend(shortlistSigner, async ({ events = [], status, txHash, dispatchError }) => {
+        if (dispatchError) {
+          if (dispatchError.isModule) {
+            const decoded = api.registry.findMetaError(dispatchError.asModule);
+            const { docs, name, section } = decoded;
+            console.log(`babt: ${eth_address}, status: ${status.type}, dispatch error: ${section}.${name} - ${docs.join(' ')}`);
+          } else {
+            console.log(`babt: ${eth_address}, status: ${status.type}, dispatch error: ${dispatchError.toString()}`);
+          }
+        }
+        if (status.isFinalized) {
+          console.log(`babt: ${eth_address}, status: ${status.type}, block hash: ${status.asFinalized}, transaction: ${txHash.toHex()}`);
+          isValid = true; 
+          unsub();
+        }
+      });
 
-      // TODO: callback
-      isValid = true; 
     }
-  }
+  }  
   const result = {
-    status: isValid
+    status: isValid,
+    token: balance
   };
   return {
     headers: {
@@ -352,6 +368,16 @@ export const shortlistOne = async (event) => {
     body: JSON.stringify(result, null, 2),
   };
 };
+
+async function recoverAddressFromSignature(message, signature) {
+  // Hash the message
+  const messageHash = hashMessage(message);
+
+  // Recover the address
+  const recoveredAddress = ethers.utils.recoverAddress(messageHash, signature);
+
+  return recoveredAddress;
+}
 
 export const babtAccountDiscovery = async() => {
   const stopwatch = { start: performance.now() };

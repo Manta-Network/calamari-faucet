@@ -308,6 +308,51 @@ export const shortlist = async (event) => {
   };
 };
 
+export const shortlistOne = async (event) => {
+  const response = {
+      payload: JSON.parse(event.body),
+  };
+  await cryptoWaitReady();
+  const eth_address = response.payload.shortlist; // only one address
+  const eth_signature = response.payload.signatrure; // the signatrure of eth address
+  // TODO: check address from eth_signature should match eth_address
+
+  const isValid = false;
+  if(hasBalance(eth_address)) {
+    const provider = new WsProvider(endpoint.zqhxuyuan);
+    const api = await ApiPromise.create({ provider });
+    await api.isReady;
+
+    const address = {
+      bab: eth_address
+    };
+
+    // query on chain data, make sure the address hasn't in allowlist
+    const query_state = await api.query.mantaSbt.evmAddressAllowlist(address);
+    if(query_state.isNone == 1) {
+      // use fixed account for now.
+      const shortlistSigner = new Keyring({ type: 'sr25519' }).addFromMnemonic(signer["dmvSXhJWeJEKTZT8CCUieJDaNjNFC4ZFqfUm4Lx1z7J7oFzBf"]);
+      
+      await api.tx.mantaSbt.allowlistEvmAccount(address).signAndSend(shortlistSigner);
+
+      // TODO: callback
+      isValid = true; 
+    }
+  }
+  const result = {
+    status: isValid
+  };
+  return {
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Credentials': true,
+      'Content-Type': 'application/json',
+    },
+    statusCode: isValid ? 200 : 401,
+    body: JSON.stringify(result, null, 2),
+  };
+};
+
 export const babtAccountDiscovery = async() => {
   const stopwatch = { start: performance.now() };
   const chunk = {

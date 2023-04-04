@@ -102,6 +102,10 @@ const balanceOf = async (babtAddress) => (
   await ethCall(endpoint.binance, babtSmartContract, 'balanceOf(address)', [babtAddress])
 );
 
+const tokenIdOf = async (babtAddress) => (
+  await ethCall(endpoint.binance, babtSmartContract, 'tokenIdOf(address)', [babtAddress])
+);
+
 const getAccount = async (id) => {
   const { error, result } = await ownerOf(id);
   return {
@@ -314,8 +318,11 @@ export const shortlist = async (event) => {
   const isValid = false;
 
   const eth_address = payload.shortlist; // only one address
-  const balance = await balanceOf(eth_address);
-  if(!!balance) {
+  const token = "0";
+  if(hasBalance(eth_address)) {
+    const tokenId = await tokenIdOf(eth_address);
+    token = tokenId.result;
+
     const provider = new WsProvider(endpoint.zqhxuyuan);
     const api = await ApiPromise.create({ provider });
     await api.isReady;
@@ -343,7 +350,7 @@ export const shortlist = async (event) => {
         }
         if (status.isFinalized) {
           console.log(`babt: ${eth_address}, status: ${status.type}, block hash: ${status.asFinalized}, transaction: ${txHash.toHex()}`);
-          isValid = true; 
+          isValid = true;
           unsub();
         }
       });
@@ -352,7 +359,7 @@ export const shortlist = async (event) => {
   }  
   const result = {
     status: isValid,
-    token: balance
+    token
   };
   return {
     headers: {

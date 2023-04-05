@@ -139,7 +139,7 @@ const hasPriorAllowlist = async (babtAddress) => {
   const allowlist = (await Promise.all([
     client.db('calamari-faucet').collection('babt-allowlist').findOne({ babtAddress }),
   ])).filter((x) => (!!x));
-  //console.log(drips);
+  //console.log(allowlist);
   return (allowlist.length > 0);
 };
 
@@ -387,7 +387,7 @@ export const shortlist = async (event) => {
   const status = (!isValidBabtAddress)
   ? 'invalid-babt-address'
     : (hasPrior)
-      ? 'prior-drip-observed'
+      ? 'prior-allow-observed'
       : !hasBabtBalance
         ? 'zero-balance-observed'
         : (await allowlistNow(babtAddress, identity))

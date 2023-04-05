@@ -18,8 +18,10 @@ const client = new MongoClient(process.env.db_readwrite);
 
 const endpoint = {
   calamari: 'wss://ws.calamari.systems',
-  binance: 'https://bsc-dataseed.binance.org',
+  // binance: 'https://bsc-dataseed.binance.org',
+  binance: 'https://rpc-bsc.48.club',
   zqhxuyuan: 'wss://zenlink.zqhxuyuan.cloud:444',
+  // zqhxuyuan: 'ws://localhost:9944',
 };
 
 const signer = {
@@ -90,7 +92,7 @@ const ethCall = async (endpoint, contract, method, parameters = [], tag = 'lates
 
 const hasBalance = async (babtAddress) => {
   const balance = await balanceOf(babtAddress);
-  //console.log(balance);
+  // console.log("balance:" + JSON.stringify(balance));
   return !!balance.result
 };
 
@@ -139,7 +141,7 @@ const hasPriorAllowlist = async (babtAddress) => {
   const allowlist = (await Promise.all([
     client.db('calamari-faucet').collection('babt-allowlist').findOne({ babtAddress }),
   ])).filter((x) => (!!x));
-  //console.log(allowlist);
+  // console.log("hasPriorAllowlist:" + JSON.stringify(allowlist));
   return (allowlist.length > 0);
 };
 
@@ -207,8 +209,9 @@ const dripNow = async (babtAddress, kmaAddress, identity) => {
             console.log(`babt: ${babtAddress}, kma: ${kmaAddress}, status: ${status.type}, dispatch error: ${dispatchError.toString()}`);
           }
         }
-        if (status.isFinalized) {
-          console.log(`babt: ${babtAddress}, kma: ${kmaAddress}, status: ${status.type}, block hash: ${status.asFinalized}, transaction: ${txHash.toHex()}`);
+        // TODO: current manta endpoint has finalized issue, need to change to isFinalized
+        if (status.isInBlock) {
+          // console.log(`babt: ${babtAddress}, kma: ${kmaAddress}, status: ${status.type}, block hash: ${status.asFinalized}, transaction: ${txHash.toHex()}`);
           await recordDrip(babtAddress, kmaAddress, { ip: identity.sourceIp, agent: identity.userAgent });
           finalized = true;
           unsub();
@@ -347,6 +350,7 @@ const allowlistNow = async (babtAddress, identity) => {
     bab: babtAddress
   };
 
+  await cryptoWaitReady();
   const provider = new WsProvider(endpoint.zqhxuyuan);
   const api = await ApiPromise.create({ provider });
   await api.isReady;
@@ -365,24 +369,32 @@ const allowlistNow = async (babtAddress, identity) => {
         console.log(`babt: ${babtAddress}, status: ${status.type}, dispatch error: ${dispatchError.toString()}`);
       }
     }
-    if (status.isFinalized) {
-      console.log(`babt: ${babtAddress}, status: ${status.type}, block hash: ${status.asFinalized}, transaction: ${txHash.toHex()}`);
+    // TODO: current manta endpoint has finalized issue, need to change to isFinalized
+    if (status.isInBlock) { 
+      // console.log(`babt: ${babtAddress}, status: ${status.type}, block hash: ${status.asFinalized}, transaction: ${txHash.toHex()}`);
       await recordAllowlist(babtAddress, { ip: identity.sourceIp, agent: identity.userAgent });
       finalized = true;
       unsub();
     }
   });
+  await api.query.mantaSbt.evmAddressAllowlist(address);
+  while (!finalized) {
+    await new Promise(r => setTimeout(r, 1000));
+  }
   return finalized;
 }
 
 export const shortlist = async (event) => {
   const payload = JSON.parse(event.body);
-  await cryptoWaitReady();
-
+  
   const babtAddress = payload.shortlist; // only one address
   const isValidBabtAddress = !!/^(0x)?[0-9a-f]{40}$/i.test(babtAddress);
   const hasPrior = isValidBabtAddress ? (await hasPriorAllowlist(babtAddress)) : false;
   const hasBabtBalance = isValidBabtAddress ? (await hasBalance(babtAddress)) : false;
+
+  const identity = (!!event.requestContext)
+    ? event.requestContext.identity
+    : undefined;
 
   const status = (!isValidBabtAddress)
   ? 'invalid-babt-address'
@@ -393,7 +405,7 @@ export const shortlist = async (event) => {
         : (await allowlistNow(babtAddress, identity))
           ? 'allow-success'
           : 'allow-fail';
-  const token = 0;
+  var token = 0;
   if(status === 'allow-success') {
     const tokenId = await tokenIdOf(babtAddress);
     token = tokenId.result;

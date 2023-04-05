@@ -135,6 +135,14 @@ const hasPriorDrips = async (babtAddress, kmaAddress) => {
   return (drips.length > 0);
 };
 
+const hasPriorAllowlist = async (babtAddress) => {
+  const allowlist = (await Promise.all([
+    client.db('calamari-faucet').collection('babt-allowlist').findOne({ babtAddress }),
+  ])).filter((x) => (!!x));
+  //console.log(drips);
+  return (allowlist.length > 0);
+};
+
 const recordDrip = async (babtAddress, kmaAddress, identity) => {
   const substrateAddress = encodeAddress(isHex(kmaAddress) ? hexToU8a(kmaAddress) : decodeAddress(kmaAddress));
   const update = await client.db('calamari-faucet').collection('babt-drip').updateOne(
@@ -147,6 +155,27 @@ const recordDrip = async (babtAddress, kmaAddress, identity) => {
           time: new Date(),
           amount: process.env.babt_kma_drip_amount,
           beneficiary: substrateAddress,
+          identity,
+        },
+      },
+    },
+    {
+      upsert: true,
+    }
+  );
+  return (update.acknowledged && !!update.upsertedCount);
+};
+
+const recordAllowlist = async (babtAddress, identity) => {
+  const update = await client.db('calamari-faucet').collection('babt-allowlist').updateOne(
+    {
+      babtAddress,
+    },
+    {
+      $push: {
+        allowlist: {
+          time: new Date(),
+          address: babtAddress,
           identity,
         },
       },
@@ -312,53 +341,65 @@ export const drip = async (event) => {
 //   };
 // };
 
+const allowlistNow = async (babtAddress, identity) => {
+  let finalized = false;
+  const address = {
+    bab: babtAddress
+  };
+
+  const provider = new WsProvider(endpoint.zqhxuyuan);
+  const api = await ApiPromise.create({ provider });
+  await api.isReady;
+
+  // TODO: Use fixed account signer for now.
+  const shortlistSigner = new Keyring({ type: 'sr25519' }).addFromMnemonic(signer["dmvSXhJWeJEKTZT8CCUieJDaNjNFC4ZFqfUm4Lx1z7J7oFzBf"]);
+  
+  const unsub = await api.tx.mantaSbt.allowlistEvmAccount(address)
+  .signAndSend(shortlistSigner, async ({ events = [], status, txHash, dispatchError }) => {
+    if (dispatchError) {
+      if (dispatchError.isModule) {
+        const decoded = api.registry.findMetaError(dispatchError.asModule);
+        const { docs, name, section } = decoded;
+        console.log(`babt: ${babtAddress}, status: ${status.type}, dispatch error: ${section}.${name} - ${docs.join(' ')}`);
+      } else {
+        console.log(`babt: ${babtAddress}, status: ${status.type}, dispatch error: ${dispatchError.toString()}`);
+      }
+    }
+    if (status.isFinalized) {
+      console.log(`babt: ${babtAddress}, status: ${status.type}, block hash: ${status.asFinalized}, transaction: ${txHash.toHex()}`);
+      await recordAllowlist(babtAddress, { ip: identity.sourceIp, agent: identity.userAgent });
+      finalized = true;
+      unsub();
+    }
+  });
+  return finalized;
+}
+
 export const shortlist = async (event) => {
   const payload = JSON.parse(event.body);
   await cryptoWaitReady();
-  const isValid = false;
 
-  const eth_address = payload.shortlist; // only one address
-  const token = "0";
-  if(hasBalance(eth_address)) {
-    const tokenId = await tokenIdOf(eth_address);
+  const babtAddress = payload.shortlist; // only one address
+  const isValidBabtAddress = !!/^(0x)?[0-9a-f]{40}$/i.test(babtAddress);
+  const hasPrior = isValidBabtAddress ? (await hasPriorAllowlist(babtAddress)) : false;
+  const hasBabtBalance = isValidBabtAddress ? (await hasBalance(babtAddress)) : false;
+
+  const status = (!isValidBabtAddress)
+  ? 'invalid-babt-address'
+    : (hasPrior)
+      ? 'prior-drip-observed'
+      : !hasBabtBalance
+        ? 'zero-balance-observed'
+        : (await allowlistNow(babtAddress, identity))
+          ? 'allow-success'
+          : 'allow-fail';
+  const token = 0;
+  if(status === 'allow-success') {
+    const tokenId = await tokenIdOf(babtAddress);
     token = tokenId.result;
-
-    const provider = new WsProvider(endpoint.zqhxuyuan);
-    const api = await ApiPromise.create({ provider });
-    await api.isReady;
-
-    const address = {
-      bab: eth_address
-    };
-
-    // query on chain data, make sure the address hasn't in allowlist
-    const query_state = await api.query.mantaSbt.evmAddressAllowlist(address);
-    if(query_state.isNone == 1) {
-      // TODO: use fixed account for now.
-      const shortlistSigner = new Keyring({ type: 'sr25519' }).addFromMnemonic(signer["dmvSXhJWeJEKTZT8CCUieJDaNjNFC4ZFqfUm4Lx1z7J7oFzBf"]);
-      
-      const unsub = await api.tx.mantaSbt.allowlistEvmAccount(address)
-      .signAndSend(shortlistSigner, async ({ events = [], status, txHash, dispatchError }) => {
-        if (dispatchError) {
-          if (dispatchError.isModule) {
-            const decoded = api.registry.findMetaError(dispatchError.asModule);
-            const { docs, name, section } = decoded;
-            console.log(`babt: ${eth_address}, status: ${status.type}, dispatch error: ${section}.${name} - ${docs.join(' ')}`);
-          } else {
-            console.log(`babt: ${eth_address}, status: ${status.type}, dispatch error: ${dispatchError.toString()}`);
-          }
-        }
-        if (status.isFinalized) {
-          console.log(`babt: ${eth_address}, status: ${status.type}, block hash: ${status.asFinalized}, transaction: ${txHash.toHex()}`);
-          isValid = true;
-          unsub();
-        }
-      });
-
-    }
-  }  
+  }          
   const result = {
-    status: isValid,
+    status,
     token
   };
   return {
@@ -367,7 +408,7 @@ export const shortlist = async (event) => {
       'Access-Control-Allow-Credentials': true,
       'Content-Type': 'application/json',
     },
-    statusCode: isValid ? 200 : 401,
+    statusCode: 200,
     body: JSON.stringify(result, null, 2),
   };
 };

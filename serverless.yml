@@ -63,10 +63,10 @@ functions:
           path: shortlist
           method: post
           cors: true
-          request:
-            parameters:
-               headers:
-                 Authorization: true
+          # request:
+          #   parameters:
+          #      headers:
+          #        Authorization: true
   discovery:
     handler: handler.babtAccountDiscovery
     timeout: 30

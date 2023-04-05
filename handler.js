@@ -18,8 +18,8 @@ const client = new MongoClient(process.env.db_readwrite);
 
 const endpoint = {
   calamari: 'wss://ws.calamari.systems',
-  // binance: 'https://bsc-dataseed.binance.org',
-  binance: 'https://rpc-bsc.48.club',
+  binance: 'https://bsc-dataseed.binance.org',
+  // binance: 'https://rpc-bsc.48.club',
   zqhxuyuan: 'wss://zenlink.zqhxuyuan.cloud:444',
   // zqhxuyuan: 'ws://localhost:9944',
 };

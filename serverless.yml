@@ -67,14 +67,14 @@ functions:
           #   parameters:
           #      headers:
           #        Authorization: true
-  discovery:
-    handler: handler.babtAccountDiscovery
-    timeout: 30
-    environment:
-      db_readwrite: ${ssm:/calamari_faucet_db_readwrite}
-    events:
-      -
-        schedule:
-          name: babt-account-discovery
-          description: index babt accounts
-          rate: rate(1 minute)
+  # discovery:
+  #   handler: handler.babtAccountDiscovery
+  #   timeout: 30
+  #   environment:
+  #     db_readwrite: ${ssm:/calamari_faucet_db_readwrite}
+  #   events:
+  #     -
+  #       schedule:
+  #         name: babt-account-discovery
+  #         description: index babt accounts
+  #         rate: rate(1 minute)

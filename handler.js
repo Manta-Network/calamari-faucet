@@ -18,8 +18,8 @@ const client = new MongoClient(process.env.db_readwrite);
 
 const endpoint = {
   calamari: 'wss://ws.calamari.systems',
-  binance: 'https://bsc-dataseed.binance.org',
-  // binance: 'https://rpc-bsc.48.club',
+  // binance: 'https://bsc-dataseed.binance.org',
+  binance: 'https://rpc-bsc.48.club',
   zqhxuyuan: 'wss://zenlink.zqhxuyuan.cloud:444',
   // zqhxuyuan: 'ws://localhost:9944',
 };
@@ -92,8 +92,18 @@ const ethCall = async (endpoint, contract, method, parameters = [], tag = 'lates
 
 const hasBalance = async (babtAddress) => {
   const balance = await balanceOf(babtAddress);
-  // console.log("balance:" + JSON.stringify(balance));
-  return !!balance.result
+  // console.log("balance:" + JSON.stringify(balance) + ",has:" + !!balance.result);
+  if(balance.result === "0x0000000000000000000000000000000000000000000000000000000000000000") {
+    return false
+  } else {
+    return true
+  }
+};
+
+const hasToken = async (babtAddress) => {
+  const token = await tokenIdOf(babtAddress);
+  console.log("token:" + JSON.stringify(token) + ",has:" + !!token.result);
+  return !!token.result
 };
 
 /*
@@ -349,6 +359,10 @@ const allowlistNow = async (babtAddress, identity) => {
   const address = {
     bab: babtAddress
   };
+
+  if(!hasToken(babtAddress)) {
+    return false;
+  }
 
   await cryptoWaitReady();
   const provider = new WsProvider(endpoint.zqhxuyuan);

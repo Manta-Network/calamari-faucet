@@ -204,7 +204,7 @@ const recordAllowlist = async (mintType, babtAddress, identity) => {
 
 const dripNow = async (mintType, babtAddress, kmaAddress, identity) => {
   let finalized = false;
-  const provider = new WsProvider(endpoint.calamari);
+  const provider = new WsProvider(endpoint.zqhxuyuan);
   const api = await ApiPromise.create({ provider });
   await Promise.all([ api.isReady, cryptoWaitReady() ]);
   const faucet = new Keyring({ type: 'sr25519' }).addFromMnemonic(process.env.calamari_faucet_mnemonic);

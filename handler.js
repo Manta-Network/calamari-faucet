@@ -18,10 +18,9 @@ const client = new MongoClient(process.env.db_readwrite);
 
 const endpoint = {
   calamari: 'wss://ws.calamari.systems',
-  // binance: 'https://bsc-dataseed.binance.org',
-  binance: 'https://rpc-bsc.48.club',
+  binance: 'https://bsc-dataseed.binance.org',
+  // binance: 'https://bsc-dataseed1.ninicoin.io',
   zqhxuyuan: 'wss://zenlink.zqhxuyuan.cloud:444',
-  // zqhxuyuan: 'ws://localhost:9944',
 };
 
 const signer = {
@@ -137,34 +136,36 @@ const ownerOf = async (tokenId) => (
   await ethCall(endpoint.binance, babtSmartContract, 'ownerOf(uint256)', [tokenId])
 );
 
-const hasPriorDrips = async (babtAddress, kmaAddress) => {
+const hasPriorDrips = async (mintType, babtAddress, kmaAddress) => {
   const substrateAddress = encodeAddress(isHex(kmaAddress) ? hexToU8a(kmaAddress) : decodeAddress(kmaAddress));
   const drips = (await Promise.all([
-    client.db('calamari-faucet').collection('babt-drip').findOne({ babtAddress }),
+    client.db('calamari-faucet').collection('babt-drip').findOne({ babtAddress, mintType }),
     client.db('calamari-faucet').collection('babt-drip').findOne({ drip: { $elemMatch: { beneficiary: substrateAddress } } })
   ])).filter((x) => (!!x));
   //console.log(drips);
   return (drips.length > 0);
 };
 
-const hasPriorAllowlist = async (babtAddress) => {
+const hasPriorAllowlist = async (mintType, babtAddress) => {
   const allowlist = (await Promise.all([
-    client.db('calamari-faucet').collection('babt-allowlist').findOne({ babtAddress }),
+    client.db('calamari-faucet').collection('babt-allowlist').findOne({ babtAddress, mintType }),
   ])).filter((x) => (!!x));
-  // console.log("hasPriorAllowlist:" + JSON.stringify(allowlist));
+  console.log("hasPriorAllowlist:" + JSON.stringify(allowlist));
   return (allowlist.length > 0);
 };
 
-const recordDrip = async (babtAddress, kmaAddress, identity) => {
+const recordDrip = async (mintType, babtAddress, kmaAddress, identity) => {
   const substrateAddress = encodeAddress(isHex(kmaAddress) ? hexToU8a(kmaAddress) : decodeAddress(kmaAddress));
   const update = await client.db('calamari-faucet').collection('babt-drip').updateOne(
     {
       babtAddress,
+      mintType
     },
     {
       $push: {
         drip: {
           time: new Date(),
+          mintType,
           amount: process.env.babt_kma_drip_amount,
           beneficiary: substrateAddress,
           identity,
@@ -178,16 +179,18 @@ const recordDrip = async (babtAddress, kmaAddress, identity) => {
   return (update.acknowledged && !!update.upsertedCount);
 };
 
-const recordAllowlist = async (babtAddress, identity) => {
+const recordAllowlist = async (mintType, babtAddress, identity) => {
   const update = await client.db('calamari-faucet').collection('babt-allowlist').updateOne(
     {
       babtAddress,
+      mintType
     },
     {
       $push: {
         allowlist: {
           time: new Date(),
           address: babtAddress,
+          mintType,
           identity,
         },
       },
@@ -199,7 +202,7 @@ const recordAllowlist = async (babtAddress, identity) => {
   return (update.acknowledged && !!update.upsertedCount);
 };
 
-const dripNow = async (babtAddress, kmaAddress, identity) => {
+const dripNow = async (mintType, babtAddress, kmaAddress, identity) => {
   let finalized = false;
   const provider = new WsProvider(endpoint.calamari);
   const api = await ApiPromise.create({ provider });
@@ -222,7 +225,7 @@ const dripNow = async (babtAddress, kmaAddress, identity) => {
         // TODO: current manta endpoint has finalized issue, need to change to isFinalized
         if (status.isInBlock) {
           // console.log(`babt: ${babtAddress}, kma: ${kmaAddress}, status: ${status.type}, block hash: ${status.asFinalized}, transaction: ${txHash.toHex()}`);
-          await recordDrip(babtAddress, kmaAddress, { ip: identity.sourceIp, agent: identity.userAgent });
+          await recordDrip(mintType, babtAddress, kmaAddress, { ip: identity.sourceIp, agent: identity.userAgent });
           finalized = true;
           unsub();
         }
@@ -234,7 +237,7 @@ const dripNow = async (babtAddress, kmaAddress, identity) => {
     const delta = currentFree.sub(previousFree);
     if (!delta.isZero() && (BigInt(process.env.babt_kma_drip_amount) === BigInt(delta))) {
       if ((BigInt(process.env.babt_kma_drip_amount) === BigInt(delta))) {
-        await recordDrip(babtAddress, kmaAddress, { ip: identity.sourceIp, agent: identity.userAgent });
+        await recordDrip(mintType, babtAddress, kmaAddress, { ip: identity.sourceIp, agent: identity.userAgent });
         finalized = true;
       }
       console.log(`babt: ${babtAddress}, kma: ${kmaAddress}, delta: ${delta}`);
@@ -289,9 +292,10 @@ export const drip = async (event) => {
 
   const isValidBabtAddress = !!/^(0x)?[0-9a-f]{40}$/i.test(babtAddress);
   const isValidKmaAddress = isValidSubstrateAddress(kmaAddress);
+  const mintType = "BAB";
 
   const prior = (isValidBabtAddress && isValidKmaAddress)
-    ? (await hasPriorDrips(babtAddress, kmaAddress))
+    ? (await hasPriorDrips(mintType, babtAddress, kmaAddress))
     : false;
   const hasBabtBalance = (isValidBabtAddress && isValidKmaAddress)
     ? (await hasBalance(babtAddress))
@@ -314,9 +318,41 @@ export const drip = async (event) => {
               ? 'prior-drip-observed'
               : !hasBabtBalance
                 ? 'zero-balance-observed'
-                : (await dripNow(babtAddress, kmaAddress, identity))
+                : (await dripNow(mintType, babtAddress, kmaAddress, identity))
                   ? 'drip-success'
                   : 'drip-fail',
+      },
+      null,
+      2
+    ),
+  };
+};
+
+export const dripped = async (event) => {
+  const babtAddress = event.pathParameters.babtAddress.slice(-40);
+  const kmaAddress = event.pathParameters.kmaAddress;
+  const isValidBabtAddress = !!/^(0x)?[0-9a-f]{40}$/i.test(babtAddress);
+  const isValidKmaAddress = isValidSubstrateAddress(kmaAddress);
+  const mintType = "BAB";
+  const prior = (isValidBabtAddress && isValidKmaAddress)
+    ? (await hasPriorDrips(mintType, babtAddress, kmaAddress))
+    : false;
+  return {
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Credentials': true,
+      'Content-Type': 'application/json',
+    },
+    statusCode: 200,
+    body: JSON.stringify(
+      {
+        status: (!isValidBabtAddress)
+          ? 'invalid-babt-address'
+          : (!isValidKmaAddress)
+            ? 'invalid-kma-address'
+            : (prior)
+              ? 'dripped'
+              : 'non-dripped',
       },
       null,
       2
@@ -354,7 +390,7 @@ export const drip = async (event) => {
 //   };
 // };
 
-const allowlistNow = async (babtAddress, identity) => {
+const allowlistNow = async (mintType, babtAddress, identity) => {
   let finalized = false;
   const address = {
     bab: babtAddress
@@ -386,15 +422,16 @@ const allowlistNow = async (babtAddress, identity) => {
     // TODO: current manta endpoint has finalized issue, need to change to isFinalized
     if (status.isInBlock) { 
       // console.log(`babt: ${babtAddress}, status: ${status.type}, block hash: ${status.asFinalized}, transaction: ${txHash.toHex()}`);
-      await recordAllowlist(babtAddress, { ip: identity.sourceIp, agent: identity.userAgent });
+      await recordAllowlist(mintType, babtAddress, { ip: identity.sourceIp, agent: identity.userAgent });
       finalized = true;
       unsub();
     }
   });
-  await api.query.mantaSbt.evmAddressAllowlist(address);
   while (!finalized) {
     await new Promise(r => setTimeout(r, 1000));
   }
+  const allowInfo = await api.query.mantaSbt.evmAddressAllowlist(address);
+  console.log(address + "allow info:" + JSON.stringify(allowInfo));
   return finalized;
 }
 
@@ -402,8 +439,9 @@ export const shortlist = async (event) => {
   const payload = JSON.parse(event.body);
   
   const babtAddress = payload.shortlist; // only one address
+  const mintType = "BAB";
   const isValidBabtAddress = !!/^(0x)?[0-9a-f]{40}$/i.test(babtAddress);
-  const hasPrior = isValidBabtAddress ? (await hasPriorAllowlist(babtAddress)) : false;
+  const hasPrior = isValidBabtAddress ? (await hasPriorAllowlist(mintType, babtAddress)) : false;
   const hasBabtBalance = isValidBabtAddress ? (await hasBalance(babtAddress)) : false;
 
   const identity = (!!event.requestContext)
@@ -416,7 +454,7 @@ export const shortlist = async (event) => {
       ? 'prior-allow-observed'
       : !hasBabtBalance
         ? 'zero-balance-observed'
-        : (await allowlistNow(babtAddress, identity))
+        : (await allowlistNow(mintType, babtAddress, identity))
           ? 'allow-success'
           : 'allow-fail';
   var token = 0;

@@ -6,17 +6,17 @@ export const endpoint = {
     // binance: 'https://bsc-dataseed.binance.org',
     binance: 'https://bsc-dataseed1.ninicoin.io',
     zqhxuyuan: 'wss://zenlink.zqhxuyuan.cloud:444',
-    staging: 'wss://ws.calamari.seabird.systems',
+    staging: 'wss://c1.calamari.seabird.systems',
 };
 // CHANGE TO calamari on production
-export const current_endpoint = endpoint.zqhxuyuan;
+export const current_endpoint = endpoint.staging;
 
 // CHANGE THE NAME
-export const drip_collection = "test-babt-drip-1";
-export const allowlist_collection = "test-babt-allowlist-1";
+export const drip_collection = "staging-babt-drip-1";
+export const allowlist_collection = "staging-babt-allowlist-1";
 
 // NOTE, change to 1 in production
-export const dripMultiply = 100;
+export const dripMultiply = 1;
 
 // CHANGE SIGNER ACCOUNT
 export const signer = {

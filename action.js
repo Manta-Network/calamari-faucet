@@ -30,7 +30,7 @@ export const dripNow = async (mintType, babtAddress, kmaAddress, identity) => {
         }
         // TODO: current manta endpoint has finalized issue, need to change to isFinalized
         if (status.isInBlock) {
-          console.log(`recordDrip babt: ${babtAddress}, kma: ${kmaAddress}, status: ${status.type}, block hash: ${status.asFinalized}, transaction: ${txHash.toHex()}`);
+          console.log(`recordDrip babt: ${babtAddress}, kma: ${kmaAddress}, status: ${status.type}, transaction: ${txHash.toHex()}`);
           await db.recordDrip(mintType, babtAddress, kmaAddress, { ip: identity.sourceIp, agent: identity.userAgent });
           finalized = true;
           unsub();
@@ -108,7 +108,7 @@ export const allowlistNow = async (mintType, babtAddress, identity) => {
       }
       // TODO: current manta endpoint has finalized issue, need to change to isFinalized
       if (status.isInBlock) { 
-        console.log(`recordAllowlist babt: ${babtAddress}, status: ${status.type}, block hash: ${status.asFinalized}, transaction: ${txHash.toHex()}`);
+        console.log(`recordAllowlist babt: ${babtAddress}, status: ${status.type}, transaction: ${txHash.toHex()}`);
         await db.recordAllowlist(mintType, babtAddress, token_id, { ip: identity.sourceIp, agent: identity.userAgent });
         finalized = true;
         unsub();

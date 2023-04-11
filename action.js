@@ -9,11 +9,10 @@ import * as db from './db.js';
 export const dripNow = async (mintType, babtAddress, kmaAddress, identity) => {
   let finalized = false;
   const provider = new WsProvider(config.get_endpoint());
-  // console.log("endpoint:" + config.get_endpoint());
   const api = await ApiPromise.create({ provider });
   await Promise.all([ api.isReady, cryptoWaitReady() ]);
   const faucet = new Keyring({ type: 'sr25519' }).addFromMnemonic(process.env.calamari_faucet_mnemonic);
-  // console.log("faucet address:" + faucet.address);
+  console.log("drip endpoint:" + config.get_endpoint() + " from faucet address:" + faucet.address + ",kma:" + kmaAddress + ",bab:" + babtAddress);
   let { data: { free: previousFree }, nonce: previousNonce } = await api.query.system.account(kmaAddress);
   const dripAmount = BigInt(process.env.babt_kma_drip_amount) * BigInt(config.dripMultiply);
   try {
@@ -65,16 +64,16 @@ export const allowlistNow = async (mintType, babtAddress, identity) => {
     };
   
     if(!util.hasToken(babtAddress)) {
+      console.log("no bab token find:" + babtAddress);
       return false;
     }
   
-    await cryptoWaitReady();
     const provider = new WsProvider(config.get_endpoint());
     const api = await ApiPromise.create({ provider });
-    await api.isReady;
-  
-    // TODO: Use fixed account signer for now.
+    await Promise.all([ api.isReady, cryptoWaitReady() ]);
+
     const shortlistSigner = new Keyring({ type: 'sr25519' }).addFromMnemonic(config.signer[config.signer_address]);
+    console.log("allowlist endpoint:" + config.get_endpoint() + " from signer:" + shortlistSigner.address + ",bab:" + babtAddress);
     
     const unsub = await api.tx.mantaSbt.allowlistEvmAccount(address)
     .signAndSend(shortlistSigner, async ({ events = [], status, txHash, dispatchError }) => {

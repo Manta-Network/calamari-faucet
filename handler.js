@@ -13,7 +13,7 @@ const headers = {
 };
 
 export const drip = async (event) => {
-  console.log("endpoint:" + config.get_endpoint());
+  console.log("[drip]endpoint:" + config.get_endpoint());
 
   const babtAddress = event.pathParameters.babtAddress.slice(-40);
   const kmaAddress = event.pathParameters.kmaAddress;
@@ -58,7 +58,7 @@ export const drip = async (event) => {
 };
 
 export const dripped = async (event) => {
-  console.log("endpoint:" + config.get_endpoint());
+  console.log("[dripped]endpoint:" + config.get_endpoint());
 
   const babtAddress = event.pathParameters.babtAddress.slice(-40);
   const kmaAddress = event.pathParameters.kmaAddress;
@@ -88,7 +88,7 @@ export const dripped = async (event) => {
 };
 
 export const shortlist = async (event) => {
-  console.log("endpoint:" + config.get_endpoint());
+  console.log("[shortlist]endpoint:" + config.get_endpoint());
 
   const payload = JSON.parse(event.body);
   

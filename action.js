@@ -8,12 +8,12 @@ import * as db from './db.js';
 
 export const dripNow = async (mintType, babtAddress, kmaAddress, identity) => {
   let finalized = false;
-  const provider = new WsProvider(config.current_endpoint);
-  console.log("endpoint:" + config.current_endpoint);
+  const provider = new WsProvider(config.get_endpoint());
+  // console.log("endpoint:" + config.get_endpoint());
   const api = await ApiPromise.create({ provider });
   await Promise.all([ api.isReady, cryptoWaitReady() ]);
   const faucet = new Keyring({ type: 'sr25519' }).addFromMnemonic(process.env.calamari_faucet_mnemonic);
-  console.log("faucet address:" + faucet.address);
+  // console.log("faucet address:" + faucet.address);
   let { data: { free: previousFree }, nonce: previousNonce } = await api.query.system.account(kmaAddress);
   const dripAmount = BigInt(process.env.babt_kma_drip_amount) * BigInt(config.dripMultiply);
   try {
@@ -69,7 +69,7 @@ export const allowlistNow = async (mintType, babtAddress, identity) => {
     }
   
     await cryptoWaitReady();
-    const provider = new WsProvider(config.current_endpoint);
+    const provider = new WsProvider(config.get_endpoint());
     const api = await ApiPromise.create({ provider });
     await api.isReady;
   

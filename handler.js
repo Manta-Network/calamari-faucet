@@ -3,6 +3,7 @@
 import * as util from './util.js';
 import * as db from './db.js';
 import * as action from './action.js';
+import * as config from './config.js';
 //import fetch from 'node-fetch';
 
 const headers = {
@@ -12,6 +13,8 @@ const headers = {
 };
 
 export const drip = async (event) => {
+  console.log("endpoint:" + config.get_endpoint());
+
   const babtAddress = event.pathParameters.babtAddress.slice(-40);
   const kmaAddress = event.pathParameters.kmaAddress;
 
@@ -55,6 +58,8 @@ export const drip = async (event) => {
 };
 
 export const dripped = async (event) => {
+  console.log("endpoint:" + config.get_endpoint());
+
   const babtAddress = event.pathParameters.babtAddress.slice(-40);
   const kmaAddress = event.pathParameters.kmaAddress;
   const isValidBabtAddress = !!/^(0x)?[0-9a-f]{40}$/i.test(babtAddress);
@@ -83,6 +88,8 @@ export const dripped = async (event) => {
 };
 
 export const shortlist = async (event) => {
+  console.log("endpoint:" + config.get_endpoint());
+
   const payload = JSON.parse(event.body);
   
   const babtAddress = payload.shortlist; // only one address

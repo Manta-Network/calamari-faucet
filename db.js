@@ -13,8 +13,8 @@ const client = new MongoClient(process.env.db_readwrite);
 export const hasPriorDrips = async (mintType, babtAddress, kmaAddress) => {
   const substrateAddress = encodeAddress(isHex(kmaAddress) ? hexToU8a(kmaAddress) : decodeAddress(kmaAddress));
   const drips = (await Promise.all([
-    client.db('calamari-faucet').collection(config.drip_collection).findOne({ babtAddress, mintType }),
-    client.db('calamari-faucet').collection(config.drip_collection).findOne({ drip: { $elemMatch: { beneficiary: substrateAddress } } })
+    client.db('calamari-faucet').collection(config.get_drip_collection()).findOne({ babtAddress, mintType }),
+    client.db('calamari-faucet').collection(config.get_drip_collection()).findOne({ drip: { $elemMatch: { beneficiary: substrateAddress } } })
   ])).filter((x) => (!!x));
   //console.log(drips);
   return (drips.length > 0);
@@ -22,7 +22,7 @@ export const hasPriorDrips = async (mintType, babtAddress, kmaAddress) => {
 
 export const hasPriorAllowlist = async (mintType, babtAddress) => {
   const allowlist = (await Promise.all([
-    client.db('calamari-faucet').collection(config.allowlist_collection).findOne({ babtAddress, mintType }),
+    client.db('calamari-faucet').collection(config.get_allowlist_collection()).findOne({ babtAddress, mintType }),
   ])).filter((x) => (!!x));
   console.log("hasPriorAllowlist:" + JSON.stringify(allowlist));
   return (allowlist.length > 0);
@@ -30,7 +30,7 @@ export const hasPriorAllowlist = async (mintType, babtAddress) => {
 
 export const recordDrip = async (mintType, babtAddress, kmaAddress, identity) => {
   const substrateAddress = encodeAddress(isHex(kmaAddress) ? hexToU8a(kmaAddress) : decodeAddress(kmaAddress));
-  const update = await client.db('calamari-faucet').collection(config.drip_collection).updateOne(
+  const update = await client.db('calamari-faucet').collection(config.get_drip_collection()).updateOne(
     {
       babtAddress,
       mintType
@@ -54,7 +54,7 @@ export const recordDrip = async (mintType, babtAddress, kmaAddress, identity) =>
 };
 
 export const recordAllowlist = async (mintType, babtAddress, identity) => {
-  const update = await client.db('calamari-faucet').collection(config.allowlist_collection).updateOne(
+  const update = await client.db('calamari-faucet').collection(config.get_allowlist_collection()).updateOne(
     {
       babtAddress,
       mintType

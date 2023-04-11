@@ -40,6 +40,7 @@ functions:
       db_readwrite: ${ssm:/calamari_faucet_db_readwrite}
       calamari_faucet_mnemonic: ${ssm:/calamari_faucet_mnemonic}
       babt_kma_drip_amount: ${ssm:/calamari_faucet_babt_kma_drip_amount}
+      stage_env: ${self:provider.stage}
     events:
       -
         http:
@@ -58,6 +59,7 @@ functions:
       db_readwrite: ${ssm:/calamari_faucet_db_readwrite}
       calamari_faucet_mnemonic: ${ssm:/calamari_faucet_mnemonic}
       babt_kma_drip_amount: ${ssm:/calamari_faucet_babt_kma_drip_amount}
+      stage_env: ${self:provider.stage}
     events:
       -
         http:
@@ -75,6 +77,7 @@ functions:
     environment:
       db_readwrite: ${ssm:/calamari_faucet_db_readwrite}
       shortlist_signer: ${ssm:/calamari_faucet_shortlist_signer}
+      stage_env: ${self:provider.stage}
     events:
       -
         http:

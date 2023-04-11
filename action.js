@@ -30,7 +30,7 @@ export const dripNow = async (mintType, babtAddress, kmaAddress, identity) => {
         }
         // TODO: current manta endpoint has finalized issue, need to change to isFinalized
         if (status.isInBlock) {
-          // console.log(`babt: ${babtAddress}, kma: ${kmaAddress}, status: ${status.type}, block hash: ${status.asFinalized}, transaction: ${txHash.toHex()}`);
+          console.log(`recordDrip babt: ${babtAddress}, kma: ${kmaAddress}, status: ${status.type}, block hash: ${status.asFinalized}, transaction: ${txHash.toHex()}`);
           await db.recordDrip(mintType, babtAddress, kmaAddress, { ip: identity.sourceIp, agent: identity.userAgent });
           finalized = true;
           unsub();
@@ -67,10 +67,30 @@ export const allowlistNow = async (mintType, babtAddress, identity) => {
       console.log("no bab token find:" + babtAddress);
       return false;
     }
-  
+    const tokenId = await util.tokenIdOf(babtAddress);
+    const token_id = tokenId.result;
+
     const provider = new WsProvider(config.get_endpoint());
     const api = await ApiPromise.create({ provider });
     await Promise.all([ api.isReady, cryptoWaitReady() ]);
+
+    // Query storage, if exists, then return
+    const queryAllowInfo = await api.query.mantaSbt.evmAddressAllowlist(address);
+    if(queryAllowInfo.isNone !== true) {
+      const json = JSON.parse(JSON.stringify(queryAllowInfo));
+      if(json.available != undefined) {
+        console.log(babtAddress + " is already available:" + json.available);
+        // TODO: Maybe not exist in database, then store it?
+        if(!db.hasPriorAllowlist) {
+          await db.recordAllowlist(mintType, babtAddress, token_id, { ip: identity.sourceIp, agent: identity.userAgent });
+          console.log("bab address:" + babtAddress + " exist onchain, but not on db, put it now.");
+        }
+        return true;
+      } else {
+        console.log(babtAddress + " is already minted!");
+        return false;
+      }
+    }
 
     const shortlistSigner = new Keyring({ type: 'sr25519' }).addFromMnemonic(config.signer[config.signer_address]);
     console.log("allowlist endpoint:" + config.get_endpoint() + " from signer:" + shortlistSigner.address + ",bab:" + babtAddress);
@@ -88,8 +108,8 @@ export const allowlistNow = async (mintType, babtAddress, identity) => {
       }
       // TODO: current manta endpoint has finalized issue, need to change to isFinalized
       if (status.isInBlock) { 
-        // console.log(`babt: ${babtAddress}, status: ${status.type}, block hash: ${status.asFinalized}, transaction: ${txHash.toHex()}`);
-        await db.recordAllowlist(mintType, babtAddress, { ip: identity.sourceIp, agent: identity.userAgent });
+        console.log(`recordAllowlist babt: ${babtAddress}, status: ${status.type}, block hash: ${status.asFinalized}, transaction: ${txHash.toHex()}`);
+        await db.recordAllowlist(mintType, babtAddress, token_id, { ip: identity.sourceIp, agent: identity.userAgent });
         finalized = true;
         unsub();
       }
@@ -98,7 +118,7 @@ export const allowlistNow = async (mintType, babtAddress, identity) => {
       await new Promise(r => setTimeout(r, 1000));
     }
     const allowInfo = await api.query.mantaSbt.evmAddressAllowlist(address);
-    console.log(address + "allow info:" + JSON.stringify(allowInfo));
+    console.log(babtAddress + " got result, allow info:" + JSON.stringify(allowInfo));
     return finalized;
   }
   

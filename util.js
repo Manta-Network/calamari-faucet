@@ -74,7 +74,7 @@ export const hasBalance = async (babtAddress) => {
 
 export const hasToken = async (babtAddress) => {
     const token = await tokenIdOf(babtAddress);
-    console.log("token:" + JSON.stringify(token) + ",has:" + !!token.result);
+    // console.log("token:" + JSON.stringify(token) + ",has:" + !!token.result);
     return !!token.result
 };
 

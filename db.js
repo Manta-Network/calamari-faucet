@@ -53,7 +53,7 @@ export const recordDrip = async (mintType, babtAddress, kmaAddress, identity) =>
   return (update.acknowledged && !!update.upsertedCount);
 };
 
-export const recordAllowlist = async (mintType, babtAddress, identity) => {
+export const recordAllowlist = async (mintType, babtAddress, token_id, identity) => {
   const update = await client.db('calamari-faucet').collection(config.get_allowlist_collection()).updateOne(
     {
       babtAddress,
@@ -62,9 +62,8 @@ export const recordAllowlist = async (mintType, babtAddress, identity) => {
     {
       $push: {
         allowlist: {
+          token_id,
           time: new Date(),
-          address: babtAddress,
-          mintType,
           identity,
         },
       },

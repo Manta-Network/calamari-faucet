@@ -1,0 +1,101 @@
+service: calamari-faucet
+
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  stage: staging
+  profile: manta-service
+  region: eu-central-1
+  lambdaHashingVersion: 20201221
+  iam:
+    role:
+      name: calamari-faucet-staging
+      # https://docs.aws.amazon.com/systems-manager/latest/userguide/sysman-paramstore-access.html
+      statements:
+        -
+          Effect: Allow
+          Action:
+            - 'ssm:DescribeParameters'
+          Resource: '*'
+        -
+          Effect: Allow
+          Action:
+            - 'ssm:GetParameter'
+          Resource: 'arn:aws:ssm:eu-central-1::parameter/calamari_faucet_*'
+
+plugins:
+  - serverless-offline
+useDotenv: true
+
+package:
+  excludeDevDependencies: true
+
+functions:
+  drip:
+    handler: handler.drip
+    timeout: 29
+    environment:
+      db_readwrite: ${ssm:/calamari_faucet_db_readwrite}
+      calamari_faucet_mnemonic: ${ssm:/calamari_faucet_mnemonic}
+      babt_kma_drip_amount: ${ssm:/calamari_faucet_babt_kma_drip_amount}
+      stage_env: ${self:provider.stage}
+    events:
+      -
+        http:
+          path: drip/{babtAddress}/{kmaAddress}
+          method: get
+          cors: true
+          request:
+            parameters:
+               paths:
+                 babtAddress: true
+                 kmaAddress: true
+  dripped:
+    handler: handler.dripped
+    timeout: 29
+    environment:
+      db_readwrite: ${ssm:/calamari_faucet_db_readwrite}
+      calamari_faucet_mnemonic: ${ssm:/calamari_faucet_mnemonic}
+      babt_kma_drip_amount: ${ssm:/calamari_faucet_babt_kma_drip_amount}
+      stage_env: ${self:provider.stage}
+    events:
+      -
+        http:
+          path: dripped/{babtAddress}/{kmaAddress}
+          method: get
+          cors: true
+          request:
+            parameters:
+               paths:
+                 babtAddress: true
+                 kmaAddress: true
+  shortlist:
+    handler: handler.shortlist
+    timeout: 29
+    environment:
+      db_readwrite: ${ssm:/calamari_faucet_db_readwrite}
+      shortlist_signer: ${ssm:/calamari_faucet_shortlist_signer}
+      stage_env: ${self:provider.stage}
+    events:
+      -
+        http:
+          path: shortlist
+          method: post
+          cors: true
+          # request:
+          #   parameters:
+          #      headers:
+          #        Authorization: true
+  # discovery:
+  #   handler: handler.babtAccountDiscovery
+  #   timeout: 30
+  #   environment:
+  #     db_readwrite: ${ssm:/calamari_faucet_db_readwrite}
+  #   events:
+  #     -
+  #       schedule:
+  #         name: babt-account-discovery
+  #         description: index babt accounts
+  #         rate: rate(1 minute)

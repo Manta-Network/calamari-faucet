@@ -93,7 +93,7 @@ export const allowlistNow = async (api, mintType, babtAddress, identity) => {
   console.log(`[shortlist] from signer: ${shortlistSigner.address} for bab:${babtAddress}`);
   
   const unsub = await api.tx.mantaSbt.allowlistEvmAccount(address)
-  .signAndSend(shortlistSigner, async ({ events = [], status, txHash, dispatchError }) => {
+  .signAndSend(shortlistSigner, { nonce: -1 }, async ({ events = [], status, txHash, dispatchError }) => {
     if (dispatchError) {
       if (dispatchError.isModule) {
         const decoded = api.registry.findMetaError(dispatchError.asModule);

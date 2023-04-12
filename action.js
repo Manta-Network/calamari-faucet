@@ -120,6 +120,9 @@ export const allowlistNow = async (api, mintType, babtAddress, identity) => {
 }
 
 export const hasOnchainPrior = async (api, mintType, babtAddress, identity) => {
+  const address = {
+    bab: babtAddress
+  };
   const queryAllowInfo = await api.query.mantaSbt.evmAddressAllowlist(address);
   if(queryAllowInfo.isNone === true) {
     // No exist, able to add to allowlist.

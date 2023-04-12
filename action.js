@@ -20,7 +20,12 @@ export const dripNow = async (mintType, babtAddress, kmaAddress, identity) => {
   try {
     const unsub = await api.tx.balances
       .transfer(kmaAddress, dripAmount)
-      .signAndSend(faucet, async ({ events = [], status, txHash, dispatchError }) => {
+      /*
+      see:
+      - nonce auto handling: https://polkadot.js.org/docs/api/cookbook/tx/
+      - method signature (options + callback): https://github.com/polkadot-js/api/blob/9fe2798/packages/api/src/submittable/createClass.ts#L212-L213
+      */
+      .signAndSend(faucet, { nonce: -1 }, async ({ events = [], status, txHash, dispatchError }) => {
         if (dispatchError) {
           if (dispatchError.isModule) {
             const decoded = api.registry.findMetaError(dispatchError.asModule);

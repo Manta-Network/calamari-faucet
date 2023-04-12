@@ -29,8 +29,7 @@ export const get_endpoint = () => {
     } else if(env === "testing") {
         return endpoint.testing;
     } else {
-        // return endpoint.calamari;
-        return endpoint.staging;
+        return endpoint.calamari;
     }
 }
 
@@ -41,19 +40,17 @@ export const get_drip_collection = () => {
     } else if(env === "testing") {
         return "testing-babt-drip-1";
     } else {
-        // TODO: change to prod
-        return "preprod-babt-drip-2";
+        return "prod-babt-drip";
     }
 }
 
 export const get_allowlist_collection = () => {
     const env = process.env.stage_env;
     if(env === "staging") {
-        return "staging-babt-drip-1";
+        return "staging-babt-allowlist-1";
     } else if(env === "testing") {
-        return "testing-babt-drip-1";
+        return "testing-babt-allowlist-1";
     } else {
-        // TODO: change to prod
-        return "preprod-babt-drip-2";
+        return "prod-babt-allowlist";
     }
 }

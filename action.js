@@ -10,7 +10,7 @@ export const dripNow = async (mintType, babtAddress, kmaAddress, identity) => {
   let finalized = false;
   const endpoint = config.get_endpoint();
   const provider = new WsProvider(endpoint);
-  const api = await ApiPromise.create({ provider });
+  const api = await ApiPromise.create({ provider, noInitWarn: true });
   await Promise.all([ api.isReady, cryptoWaitReady() ]);
   const faucet = new Keyring({ type: 'sr25519' }).addFromMnemonic(process.env.calamari_faucet_mnemonic);
   console.log(`drip endpoint:${endpoint} from faucet:${faucet.address} to ${kmaAddress} of bab:${babtAddress}`);

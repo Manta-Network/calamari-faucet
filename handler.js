@@ -93,7 +93,7 @@ export const shortlist = async (event) => {
 
   const endpoint = config.get_endpoint();
   const provider = new WsProvider(endpoint);
-  const api = await ApiPromise.create({ provider });
+  const api = await ApiPromise.create({ provider, noInitWarn: true });
   await Promise.all([ api.isReady, cryptoWaitReady() ]);
 
   const mintType = "BAB";

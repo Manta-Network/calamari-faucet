@@ -13,8 +13,6 @@ const headers = {
 };
 
 export const drip = async (event) => {
-  console.log("[drip]endpoint:" + config.get_endpoint());
-
   const babtAddress = event.pathParameters.babtAddress.slice(-40);
   const kmaAddress = event.pathParameters.kmaAddress;
 
@@ -34,6 +32,7 @@ export const drip = async (event) => {
     ? (await util.hasBalance(babtAddress))
     : false;
 
+  console.log(`[drip] bab:${babtAddress},kma:${kmaAddress},prior:${prior},hasBabtBalance:${hasBabtBalance}`);    
   return {
     headers,
     statusCode: 200,
@@ -58,8 +57,6 @@ export const drip = async (event) => {
 };
 
 export const dripped = async (event) => {
-  console.log("[dripped]endpoint:" + config.get_endpoint());
-
   const babtAddress = event.pathParameters.babtAddress.slice(-40);
   const kmaAddress = event.pathParameters.kmaAddress;
   const isValidBabtAddress = !!/^(0x)?[0-9a-f]{40}$/i.test(babtAddress);
@@ -68,6 +65,7 @@ export const dripped = async (event) => {
   const prior = (isValidBabtAddress && isValidKmaAddress)
     ? (await db.hasPriorDrips(mintType, babtAddress, kmaAddress))
     : false;
+  console.log(`[dripped] bab:${babtAddress},kma:${kmaAddress},prior:${prior}`);    
   return {
     headers,
     statusCode: 200,
@@ -88,10 +86,7 @@ export const dripped = async (event) => {
 };
 
 export const shortlist = async (event) => {
-  console.log("[shortlist]endpoint:" + config.get_endpoint());
-
   const payload = JSON.parse(event.body);
-  
   const babtAddress = payload.shortlist; // only one address
   const mintType = "BAB";
   const isValidBabtAddress = !!/^(0x)?[0-9a-f]{40}$/i.test(babtAddress);
@@ -101,6 +96,7 @@ export const shortlist = async (event) => {
   const identity = (!!event.requestContext)
     ? event.requestContext.identity
     : undefined;
+  console.log(`[shortlist] bab:${babtAddress},prior:${hasPrior},balance:${hasBabtBalance}`);    
 
   const status = (!isValidBabtAddress)
   ? 'invalid-babt-address'
@@ -115,6 +111,7 @@ export const shortlist = async (event) => {
   if(status === 'allow-success') {
     const tokenId = await util.tokenIdOf(babtAddress);
     token = tokenId.result;
+    console.log(`[shortlist] success bab:${babtAddress},token:${token}`);    
   }          
   const result = {
     status,

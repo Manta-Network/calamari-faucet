@@ -8,11 +8,13 @@ import * as db from './db.js';
 
 export const dripNow = async (mintType, babtAddress, kmaAddress, identity) => {
   let finalized = false;
-  const provider = new WsProvider(config.get_endpoint());
+  const endpoint = config.get_endpoint();
+  const provider = new WsProvider(endpoint);
   const api = await ApiPromise.create({ provider });
   await Promise.all([ api.isReady, cryptoWaitReady() ]);
   const faucet = new Keyring({ type: 'sr25519' }).addFromMnemonic(process.env.calamari_faucet_mnemonic);
-  console.log("drip endpoint:" + config.get_endpoint() + " from faucet address:" + faucet.address + ",kma:" + kmaAddress + ",bab:" + babtAddress);
+  console.log(`drip endpoint:${endpoint} from faucet:${faucet.address} to ${kmaAddress} of bab:${babtAddress}`);
+  
   let { data: { free: previousFree }, nonce: previousNonce } = await api.query.system.account(kmaAddress);
   const dripAmount = BigInt(process.env.babt_kma_drip_amount) * BigInt(config.dripMultiply);
   try {
@@ -23,21 +25,21 @@ export const dripNow = async (mintType, babtAddress, kmaAddress, identity) => {
           if (dispatchError.isModule) {
             const decoded = api.registry.findMetaError(dispatchError.asModule);
             const { docs, name, section } = decoded;
-            console.log(`babt: ${babtAddress}, kma: ${kmaAddress}, status: ${status.type}, dispatch error: ${section}.${name} - ${docs.join(' ')}`);
+            console.log(`drip babt: ${babtAddress}, kma: ${kmaAddress}, status: ${status.type}, dispatch error: ${section}.${name} - ${docs.join(' ')}`);
           } else {
-            console.log(`babt: ${babtAddress}, kma: ${kmaAddress}, status: ${status.type}, dispatch error: ${dispatchError.toString()}`);
+            console.log(`drip babt: ${babtAddress}, kma: ${kmaAddress}, status: ${status.type}, dispatch error: ${dispatchError.toString()}`);
           }
         }
         // TODO: current manta endpoint has finalized issue, need to change to isFinalized
         if (status.isInBlock) {
-          console.log(`recordDrip babt: ${babtAddress}, kma: ${kmaAddress}, status: ${status.type}, transaction: ${txHash.toHex()}`);
+          console.log(`drip recordDrip babt: ${babtAddress}, kma: ${kmaAddress}, status: ${status.type}, transaction: ${txHash.toHex()}`);
           await db.recordDrip(mintType, babtAddress, kmaAddress, { ip: identity.sourceIp, agent: identity.userAgent });
           finalized = true;
           unsub();
         }
       });
   } catch (exception) {
-    console.error(`babt: ${babtAddress}, kma: ${kmaAddress}, exception:`, exception);
+    console.error(`drip babt: ${babtAddress}, kma: ${kmaAddress}, exception:`, exception);
   }
   api.query.system.account(kmaAddress, async ({ data: { free: currentFree }, nonce: currentNonce }) => {
     const delta = currentFree.sub(previousFree);
@@ -46,7 +48,7 @@ export const dripNow = async (mintType, babtAddress, kmaAddress, identity) => {
         await db.recordDrip(mintType, babtAddress, kmaAddress, { ip: identity.sourceIp, agent: identity.userAgent });
         finalized = true;
       }
-      console.log(`babt: ${babtAddress}, kma: ${kmaAddress}, delta: ${delta}`);
+      console.log(`drip babt: ${babtAddress}, kma: ${kmaAddress}, delta: ${delta}`);
       previousFree = currentFree;
       previousNonce = currentNonce;
     }
@@ -64,13 +66,14 @@ export const allowlistNow = async (mintType, babtAddress, identity) => {
     };
   
     if(!util.hasToken(babtAddress)) {
-      console.log("no bab token find:" + babtAddress);
+      console.log(`no bab token find: ${babtAddress}`);
       return false;
     }
     const tokenId = await util.tokenIdOf(babtAddress);
     const token_id = tokenId.result;
 
-    const provider = new WsProvider(config.get_endpoint());
+    const endpoint = config.get_endpoint();
+    const provider = new WsProvider(endpoint);
     const api = await ApiPromise.create({ provider });
     await Promise.all([ api.isReady, cryptoWaitReady() ]);
 
@@ -79,21 +82,20 @@ export const allowlistNow = async (mintType, babtAddress, identity) => {
     if(queryAllowInfo.isNone !== true) {
       const json = JSON.parse(JSON.stringify(queryAllowInfo));
       if(json.available != undefined) {
-        console.log(babtAddress + " is already available:" + json.available);
         // TODO: Maybe not exist in database, then store it?
         if(!db.hasPriorAllowlist) {
           await db.recordAllowlist(mintType, babtAddress, token_id, { ip: identity.sourceIp, agent: identity.userAgent });
-          console.log("bab address:" + babtAddress + " exist onchain, but not on db, put it now.");
+          console.log(`allowlist bab address:${babtAddress} exist onchain, but not on db, put it now.`);
         }
         return true;
       } else {
-        console.log(babtAddress + " is already minted!");
+        console.log(`allowlist bab address:${babtAddress} is already minted!`);
         return false;
       }
     }
 
     const shortlistSigner = new Keyring({ type: 'sr25519' }).addFromMnemonic(config.signer[config.signer_address]);
-    console.log("allowlist endpoint:" + config.get_endpoint() + " from signer:" + shortlistSigner.address + ",bab:" + babtAddress);
+    console.log(`allowlist endpoint:${endpoint} from signer: ${shortlistSigner.address} for bab:${babtAddress}`);
     
     const unsub = await api.tx.mantaSbt.allowlistEvmAccount(address)
     .signAndSend(shortlistSigner, async ({ events = [], status, txHash, dispatchError }) => {
@@ -101,14 +103,14 @@ export const allowlistNow = async (mintType, babtAddress, identity) => {
         if (dispatchError.isModule) {
           const decoded = api.registry.findMetaError(dispatchError.asModule);
           const { docs, name, section } = decoded;
-          console.log(`babt: ${babtAddress}, status: ${status.type}, dispatch error: ${section}.${name} - ${docs.join(' ')}`);
+          console.log(`allowlist babt: ${babtAddress}, status: ${status.type}, dispatch error: ${section}.${name} - ${docs.join(' ')}`);
         } else {
-          console.log(`babt: ${babtAddress}, status: ${status.type}, dispatch error: ${dispatchError.toString()}`);
+          console.log(`allowlist babt: ${babtAddress}, status: ${status.type}, dispatch error: ${dispatchError.toString()}`);
         }
       }
       // TODO: current manta endpoint has finalized issue, need to change to isFinalized
       if (status.isInBlock) { 
-        console.log(`recordAllowlist babt: ${babtAddress}, status: ${status.type}, transaction: ${txHash.toHex()}`);
+        console.log(`allowlist recordAllowlist babt: ${babtAddress}, status: ${status.type}, transaction: ${txHash.toHex()}`);
         await db.recordAllowlist(mintType, babtAddress, token_id, { ip: identity.sourceIp, agent: identity.userAgent });
         finalized = true;
         unsub();
@@ -118,7 +120,7 @@ export const allowlistNow = async (mintType, babtAddress, identity) => {
       await new Promise(r => setTimeout(r, 1000));
     }
     const allowInfo = await api.query.mantaSbt.evmAddressAllowlist(address);
-    console.log(babtAddress + " got result, allow info:" + JSON.stringify(allowInfo));
+    console.log(`allowlist bab:${babtAddress} got allowed, allow info:${JSON.stringify(allowInfo)}`);
     return finalized;
   }
   

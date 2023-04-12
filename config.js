@@ -12,6 +12,9 @@ export const endpoint = {
 // NOTE, change to 1 in staging/production
 export const dripMultiply = 1;
 
+// Not used for now.
+export const dripAmount = 1500000000000;
+
 // CHANGE SIGNER ACCOUNT
 export const signer = {
     dmvSXhJWeJEKTZT8CCUieJDaNjNFC4ZFqfUm4Lx1z7J7oFzBf: process.env.shortlist_signer,

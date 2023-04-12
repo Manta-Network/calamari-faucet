@@ -59,68 +59,87 @@ export const dripNow = async (mintType, babtAddress, kmaAddress, identity) => {
   return finalized;
 };
 
-export const allowlistNow = async (mintType, babtAddress, identity) => {
-    let finalized = false;
-    const address = {
-      bab: babtAddress
-    };
-  
-    if(!util.hasToken(babtAddress)) {
-      console.log(`no bab token find: ${babtAddress}`);
+export const allowlistNow = async (api, mintType, babtAddress, identity) => {
+  let finalized = false;
+  const address = {
+    bab: babtAddress
+  };
+
+  // if(!util.hasToken(babtAddress)) {
+  //   console.log(`no bab token find: ${babtAddress}`);
+  //   return false;
+  // }
+  const tokenId = await util.tokenIdOf(babtAddress);
+  const token_id = tokenId.result;
+
+  // Query storage, if exists, then return
+  const queryAllowInfo = await api.query.mantaSbt.evmAddressAllowlist(address);
+  if(queryAllowInfo.isNone !== true) {
+    const json = JSON.parse(JSON.stringify(queryAllowInfo));
+    if(!db.hasPriorAllowlist(mintType, babtAddress)) {
+      await db.recordAllowlist(mintType, babtAddress, token_id, { ip: identity.sourceIp, agent: identity.userAgent });
+      console.log(`[shortlist] bab:${babtAddress} exist onchain, but not on db, put it now.`);
+    }
+    if(json.available != undefined) {
+      // Maybe not exist in database, then store it?
+      return true;
+    } else {
+      console.log(`[shortlist] bab:${babtAddress} already minted on chain!`);
       return false;
     }
-    const tokenId = await util.tokenIdOf(babtAddress);
-    const token_id = tokenId.result;
-
-    const endpoint = config.get_endpoint();
-    const provider = new WsProvider(endpoint);
-    const api = await ApiPromise.create({ provider });
-    await Promise.all([ api.isReady, cryptoWaitReady() ]);
-
-    // Query storage, if exists, then return
-    const queryAllowInfo = await api.query.mantaSbt.evmAddressAllowlist(address);
-    if(queryAllowInfo.isNone !== true) {
-      const json = JSON.parse(JSON.stringify(queryAllowInfo));
-      if(json.available != undefined) {
-        // TODO: Maybe not exist in database, then store it?
-        if(!db.hasPriorAllowlist) {
-          await db.recordAllowlist(mintType, babtAddress, token_id, { ip: identity.sourceIp, agent: identity.userAgent });
-          console.log(`allowlist bab address:${babtAddress} exist onchain, but not on db, put it now.`);
-        }
-        return true;
-      } else {
-        console.log(`allowlist bab address:${babtAddress} is already minted!`);
-        return false;
-      }
-    }
-
-    const shortlistSigner = new Keyring({ type: 'sr25519' }).addFromMnemonic(config.signer[config.signer_address]);
-    console.log(`allowlist endpoint:${endpoint} from signer: ${shortlistSigner.address} for bab:${babtAddress}`);
-    
-    const unsub = await api.tx.mantaSbt.allowlistEvmAccount(address)
-    .signAndSend(shortlistSigner, async ({ events = [], status, txHash, dispatchError }) => {
-      if (dispatchError) {
-        if (dispatchError.isModule) {
-          const decoded = api.registry.findMetaError(dispatchError.asModule);
-          const { docs, name, section } = decoded;
-          console.log(`allowlist babt: ${babtAddress}, status: ${status.type}, dispatch error: ${section}.${name} - ${docs.join(' ')}`);
-        } else {
-          console.log(`allowlist babt: ${babtAddress}, status: ${status.type}, dispatch error: ${dispatchError.toString()}`);
-        }
-      }
-      // TODO: current manta endpoint has finalized issue, need to change to isFinalized
-      if (status.isInBlock) { 
-        console.log(`allowlist recordAllowlist babt: ${babtAddress}, status: ${status.type}, transaction: ${txHash.toHex()}`);
-        await db.recordAllowlist(mintType, babtAddress, token_id, { ip: identity.sourceIp, agent: identity.userAgent });
-        finalized = true;
-        unsub();
-      }
-    });
-    while (!finalized) {
-      await new Promise(r => setTimeout(r, 1000));
-    }
-    const allowInfo = await api.query.mantaSbt.evmAddressAllowlist(address);
-    console.log(`allowlist bab:${babtAddress} got allowed, allow info:${JSON.stringify(allowInfo)}`);
-    return finalized;
   }
+
+  const shortlistSigner = new Keyring({ type: 'sr25519' }).addFromMnemonic(config.signer[config.signer_address]);
+  console.log(`[shortlist] from signer: ${shortlistSigner.address} for bab:${babtAddress}`);
   
+  const unsub = await api.tx.mantaSbt.allowlistEvmAccount(address)
+  .signAndSend(shortlistSigner, async ({ events = [], status, txHash, dispatchError }) => {
+    if (dispatchError) {
+      if (dispatchError.isModule) {
+        const decoded = api.registry.findMetaError(dispatchError.asModule);
+        const { docs, name, section } = decoded;
+        console.log(`[shortlist] babt: ${babtAddress}, status: ${status.type}, dispatch error: ${section}.${name} - ${docs.join(' ')}`);
+      } else {
+        console.log(`[shortlist] babt: ${babtAddress}, status: ${status.type}, dispatch error: ${dispatchError.toString()}`);
+      }
+    }
+    // TODO: current manta endpoint has finalized issue, need to change to isFinalized
+    if (status.isInBlock) { 
+      console.log(`[shortlist] recordAllowlist babt: ${babtAddress}, status: ${status.type}, transaction: ${txHash.toHex()}`);
+      await db.recordAllowlist(mintType, babtAddress, token_id, { ip: identity.sourceIp, agent: identity.userAgent });
+      finalized = true;
+      unsub();
+    }
+  });
+  while (!finalized) {
+    await new Promise(r => setTimeout(r, 1000));
+  }
+  const allowInfo = await api.query.mantaSbt.evmAddressAllowlist(address);
+  console.log(`[shortlist] bab: ${babtAddress} got allowed, allow info:${JSON.stringify(allowInfo)}`);
+  return finalized;
+}
+
+export const hasOnchainPrior = async (api, mintType, babtAddress, identity) => {
+  const queryAllowInfo = await api.query.mantaSbt.evmAddressAllowlist(address);
+  if(queryAllowInfo.isNone === true) {
+    // No exist, able to add to allowlist.
+    return false;
+  } else {
+    // exist on chain, maybe available or minted.
+    console.log(`[shortlist] bab:${babtAddress} exist onchain:${JSON.stringify(queryAllowInfo)}`);
+    if(!db.hasPriorAllowlist(mintType, babtAddress)) {
+      const tokenId = await util.tokenIdOf(babtAddress);
+      const token_id = tokenId.result;
+      await db.recordAllowlist(mintType, babtAddress, token_id, { ip: identity.sourceIp, agent: identity.userAgent });
+      console.log(`[shortlist] bab:${babtAddress} exist onchain, but not on db, put it now. token:${token_id}`);
+    }
+    return true;
+    
+    // const json = JSON.parse(JSON.stringify(queryAllowInfo));
+    // if(json.available != undefined) {
+    //   return true;
+    // } else {
+    //   return false;
+    // }
+  }
+}

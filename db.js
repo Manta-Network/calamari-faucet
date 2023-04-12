@@ -24,7 +24,7 @@ export const hasPriorAllowlist = async (mintType, babtAddress) => {
   const allowlist = (await Promise.all([
     client.db('calamari-faucet').collection(config.get_allowlist_collection()).findOne({ babtAddress, mintType }),
   ])).filter((x) => (!!x));
-  console.log("hasPriorAllowlist:" + JSON.stringify(allowlist));
+  // console.log("hasPriorAllowlist:" + JSON.stringify(allowlist));
   return (allowlist.length > 0);
 };
 
@@ -39,7 +39,6 @@ export const recordDrip = async (mintType, babtAddress, kmaAddress, identity) =>
       $push: {
         drip: {
           time: new Date(),
-          mintType,
           amount: process.env.babt_kma_drip_amount,
           beneficiary: substrateAddress,
           identity,

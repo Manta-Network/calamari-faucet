@@ -1,5 +1,7 @@
 'use strict';
 
+import { ApiPromise, WsProvider } from '@polkadot/api';
+import { cryptoWaitReady } from '@polkadot/util-crypto';
 import * as util from './util.js';
 import * as db from './db.js';
 import * as action from './action.js';
@@ -88,30 +90,33 @@ export const dripped = async (event) => {
 export const shortlist = async (event) => {
   const payload = JSON.parse(event.body);
   const babtAddress = payload.shortlist; // only one address
+
+  const endpoint = config.get_endpoint();
+  const provider = new WsProvider(endpoint);
+  const api = await ApiPromise.create({ provider });
+  await Promise.all([ api.isReady, cryptoWaitReady() ]);
+
   const mintType = "BAB";
   const isValidBabtAddress = !!/^(0x)?[0-9a-f]{40}$/i.test(babtAddress);
-  const hasPrior = isValidBabtAddress ? (await db.hasPriorAllowlist(mintType, babtAddress)) : false;
+  const hasDbPrior = isValidBabtAddress ? (await db.hasPriorAllowlist(mintType, babtAddress)) : false;
   const hasBabtBalance = isValidBabtAddress ? (await util.hasBalance(babtAddress)) : false;
 
   const identity = (!!event.requestContext)
     ? event.requestContext.identity
     : undefined;
-  console.log(`[shortlist] bab:${babtAddress},prior:${hasPrior},balance:${hasBabtBalance}`);    
+  console.log(`[shortlist query] bab:${babtAddress},prior:${hasDbPrior},balance:${hasBabtBalance}`);    
 
-  const status = (!isValidBabtAddress)
-  ? 'invalid-babt-address'
-    : (hasPrior)
-      ? 'prior-allow-observed'
-      : !hasBabtBalance
-        ? 'zero-balance-observed'
-        : (await action.allowlistNow(mintType, babtAddress, identity))
-          ? 'allow-success'
-          : 'allow-fail';
+  const status = (!isValidBabtAddress) ? 'invalid-babt-address'
+    : !hasBabtBalance ? 'zero-balance-observed'
+      : (hasDbPrior) ? 'prior-allow-observed'
+        : (await action.hasOnchainPrior(api, mintType, babtAddress, identity)) ? 'prior-allow-observed'
+          : (await action.allowlistNow(api, mintType, babtAddress, identity)) ? 'allow-success'
+            : 'allow-fail';
   var token = 0;
-  if(status === 'allow-success') {
+  if(status === 'allow-success' || status === 'prior-allow-observed') {
     const tokenId = await util.tokenIdOf(babtAddress);
     token = tokenId.result;
-    console.log(`[shortlist] success bab:${babtAddress},token:${token}`);    
+    console.log(`[shortlist result] bab:${babtAddress},token:${token},status:${status}`);
   }          
   const result = {
     status,

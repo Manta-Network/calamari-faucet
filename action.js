@@ -65,10 +65,6 @@ export const allowlistNow = async (api, mintType, babtAddress, identity) => {
     bab: babtAddress
   };
 
-  // if(!util.hasToken(babtAddress)) {
-  //   console.log(`no bab token find: ${babtAddress}`);
-  //   return false;
-  // }
   const tokenId = await util.tokenIdOf(babtAddress);
   const token_id = tokenId.result;
 
@@ -78,10 +74,9 @@ export const allowlistNow = async (api, mintType, babtAddress, identity) => {
     const json = JSON.parse(JSON.stringify(queryAllowInfo));
     if(!db.hasPriorAllowlist(mintType, babtAddress)) {
       await db.recordAllowlist(mintType, babtAddress, token_id, { ip: identity.sourceIp, agent: identity.userAgent });
-      console.log(`[shortlist] bab:${babtAddress} exist onchain, but not on db, put it now.`);
+      console.log(`[shortlist] bab:${babtAddress} token:${token_id} exist onchain, but not on db, put it now.`);
     }
     if(json.available != undefined) {
-      // Maybe not exist in database, then store it?
       return true;
     } else {
       console.log(`[shortlist] bab:${babtAddress} already minted on chain!`);
@@ -136,13 +131,13 @@ export const hasOnchainPrior = async (api, mintType, babtAddress, identity) => {
       await db.recordAllowlist(mintType, babtAddress, token_id, { ip: identity.sourceIp, agent: identity.userAgent });
       console.log(`[shortlist] bab:${babtAddress} exist onchain, but not on db, put it now. token:${token_id}`);
     }
-    return true;
+    // return true;
     
-    // const json = JSON.parse(JSON.stringify(queryAllowInfo));
-    // if(json.available != undefined) {
-    //   return true;
-    // } else {
-    //   return false;
-    // }
+    const json = JSON.parse(JSON.stringify(queryAllowInfo));
+    if(json.available != undefined) {
+      return true;
+    } else {
+      return false;
+    }
   }
 }

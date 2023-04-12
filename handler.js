@@ -109,7 +109,7 @@ export const shortlist = async (event) => {
   const status = (!isValidBabtAddress) ? 'invalid-babt-address'
     : !hasBabtBalance ? 'zero-balance-observed'
       : (hasDbPrior) ? 'prior-allow-observed'
-        : (await action.hasOnchainPrior(api, mintType, babtAddress, identity)) ? 'prior-allow-observed'
+        // : (await action.hasOnchainPrior(api, mintType, babtAddress, identity)) ? 'prior-allow-observed'
           : (await action.allowlistNow(api, mintType, babtAddress, identity)) ? 'allow-success'
             : 'allow-fail';
   var token = 0;

@@ -2,7 +2,7 @@
 export const babtSmartContract = '0x2b09d47d550061f995a3b5c6f0fd58005215d7c8';
 
 export const endpoint = {
-    calamari: 'wss://ws.calamari.systems',
+    calamari: 'wss://avocado.calamari.systems',
     binance: 'https://bsc-dataseed.binance.org',
     // binance: 'https://bsc-dataseed4.ninicoin.io',
     testing: 'wss://zenlink.zqhxuyuan.cloud:444',

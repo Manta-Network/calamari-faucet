@@ -14,6 +14,22 @@ const headers = {
   'Content-Type': 'application/json',
 };
 
+var api;
+
+export const global_api = async() => {
+  if(api != undefined) {
+    console.log("reusing api");
+    return api;
+  }
+  const endpoint = config.get_endpoint();
+  const provider = new WsProvider(endpoint);
+  api = await ApiPromise.create({ provider, noInitWarn: true });
+  await Promise.all([ api.isReady, cryptoWaitReady() ]);
+  console.log("api is invalid before, created a new one.");
+
+  return api;
+}
+
 export const drip = async (event) => {
   const babtAddress = event.pathParameters.babtAddress.slice(-40);
   const kmaAddress = event.pathParameters.kmaAddress;
@@ -34,6 +50,8 @@ export const drip = async (event) => {
     ? (await util.hasBalance(babtAddress))
     : false;
 
+  const api = await global_api();
+
   console.log(`[drip] bab:${babtAddress},kma:${kmaAddress},prior:${prior},hasBabtBalance:${hasBabtBalance}`);    
   return {
     headers,
@@ -48,7 +66,7 @@ export const drip = async (event) => {
               ? 'prior-drip-observed'
               : !hasBabtBalance
                 ? 'zero-balance-observed'
-                : (await action.dripNow(mintType, babtAddress, kmaAddress, identity))
+                : (await action.dripNow(api, mintType, babtAddress, kmaAddress, identity))
                   ? 'drip-success'
                   : 'drip-fail',
       },
@@ -91,10 +109,12 @@ export const shortlist = async (event) => {
   const payload = JSON.parse(event.body);
   const babtAddress = payload.shortlist; // only one address
 
-  const endpoint = config.get_endpoint();
-  const provider = new WsProvider(endpoint);
-  const api = await ApiPromise.create({ provider, noInitWarn: true });
-  await Promise.all([ api.isReady, cryptoWaitReady() ]);
+  // const endpoint = config.get_endpoint();
+  // const provider = new WsProvider(endpoint);
+  // const api = await ApiPromise.create({ provider, noInitWarn: true });
+  // await Promise.all([ api.isReady, cryptoWaitReady() ]);
+  
+  const api = await global_api();
 
   const mintType = "BAB";
   const isValidBabtAddress = !!/^(0x)?[0-9a-f]{40}$/i.test(babtAddress);

@@ -89,7 +89,7 @@ export const dripped = async (event) => {
 
 export const shortlist = async (event) => {
   const payload = JSON.parse(event.body);
-  const babtAddress = payload.shortlist; // only one address
+  const babtAddress = payload.shortlist.toLowerCase(); // only one address
 
   const endpoint = config.get_endpoint();
   const provider = new WsProvider(endpoint);

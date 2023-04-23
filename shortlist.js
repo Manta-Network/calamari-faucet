@@ -8,7 +8,8 @@ import * as action from "./action.js";
 export const shortlist = async (event) => {
     const payload = JSON.parse(event.body);
     const ethAddress = payload.shortlist.toLowerCase(); // only one address
-    const mintType = payload.mintType == undefined ? "BAB": payload.mintType;
+    const token_type = payload.token_type == undefined ? "BAB": payload.token_type;
+    const mintType = token_type === "zkBAB" ? "BAB" : token_type.toLowerCase();
 
     const isValidEthAddress = !!util.isValidEthAddress(ethAddress);
     const hasDbPrior = isValidEthAddress ? (await db.hasPriorAllowlist(mintType, ethAddress)) : false;

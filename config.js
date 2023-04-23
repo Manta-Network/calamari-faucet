@@ -8,17 +8,17 @@ export const endpoint = {
 
 export const contracts = {
     "BAB": "0x2b09d47d550061f995a3b5c6f0fd58005215d7c8",
-    "GALXE": "0xE84050261CB0A35982Ea0f6F3D9DFF4b8ED3C012"
+    "zkgalxe": "0xE84050261CB0A35982Ea0f6F3D9DFF4b8ED3C012"
 }
 
 export const chains = {
     "BAB": "binance",
-    "GALXE": "binance"
+    "zkgalxe": "binance"
 }
 
 export const tokenCallName = {
     "BAB": "tokenIdOf(address)",
-    "GALXE": "getAddressPassport(address)",
+    "zkgalxe": "getAddressPassport(address)",
 }
 
 // NOTE, change to 1 in staging/production

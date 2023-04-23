@@ -69,7 +69,7 @@ export const allowlistNow = async (api, mintType, babtAddress, identity) => {
   let address = {
     bab: babtAddress
   };
-  if (mintType === "GALXE") {
+  if (mintType === "zkgalxe") {
     address = {
       galxe: babtAddress
     }
@@ -82,7 +82,7 @@ export const allowlistNow = async (api, mintType, babtAddress, identity) => {
   const queryAllowInfo = await api.query.mantaSbt.evmAddressAllowlist(address);
   if(queryAllowInfo.isNone !== true) {
     const json = JSON.parse(JSON.stringify(queryAllowInfo));
-    if(!db.hasPriorAllowlist(mintType, babtAddress)) {
+    if(!(await db.hasPriorAllowlist(mintType, babtAddress))) {
       await db.recordAllowlist(mintType, babtAddress, token_id, { ip: identity.sourceIp, agent: identity.userAgent });
       console.log(`[shortlist] ${mintType}:${babtAddress} token:${token_id} exist onchain, but not on db, put it now.`);
     }

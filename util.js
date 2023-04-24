@@ -84,6 +84,7 @@ export const hasBalance = async (mintType, ethAddress) => {
 
 export const balanceOf = async (mintType, babtAddress) => {
     const endpoint = config.endpoint[config.chains[mintType]];
+    // console.log("mintType:" + mintType + ",chains:" + config.chains[mintType] + ",endpoint:" + endpoint);
     return await ethCall(endpoint, config.contracts[mintType], 'balanceOf(address)', [babtAddress]);
 };
 

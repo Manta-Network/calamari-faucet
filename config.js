@@ -1,13 +1,25 @@
-// thanks megan!
-export const babtSmartContract = '0x2b09d47d550061f995a3b5c6f0fd58005215d7c8';
-
 export const endpoint = {
     calamari: 'wss://i.calamari.systems',
-    binance: 'https://bsc-dataseed.binance.org',
-    // binance: 'https://bsc-dataseed4.ninicoin.io',
+    // binance: 'https://bsc-dataseed.binance.org',
+    binance: 'https://bsc-dataseed4.ninicoin.io',
     testing: 'wss://zenlink.zqhxuyuan.cloud:444',
     staging: 'wss://c1.calamari.seabird.systems',
 };
+
+export const contracts = {
+    "BAB": "0x2b09d47d550061f995a3b5c6f0fd58005215d7c8",
+    "zkgalxe": "0xE84050261CB0A35982Ea0f6F3D9DFF4b8ED3C012"
+}
+
+export const chains = {
+    "BAB": "binance",
+    "zkgalxe": "binance"
+}
+
+export const tokenCallName = {
+    "BAB": "tokenIdOf(address)",
+    "zkgalxe": "getAddressPassport(address)",
+}
 
 // NOTE, change to 1 in staging/production
 export const dripMultiply = 1;

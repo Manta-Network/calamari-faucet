@@ -1,18 +1,9 @@
 'use strict';
 
-import { ApiPromise, WsProvider } from '@polkadot/api';
-import { cryptoWaitReady } from '@polkadot/util-crypto';
 import * as util from './util.js';
 import * as db from './db.js';
 import * as action from './action.js';
-import * as config from './config.js';
-//import fetch from 'node-fetch';
-
-const headers = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Credentials': true,
-  'Content-Type': 'application/json',
-};
+import * as short from './shortlist.js';
 
 export const drip = async (event) => {
   const babtAddress = event.pathParameters.babtAddress.slice(-40);
@@ -31,12 +22,12 @@ export const drip = async (event) => {
     ? (await db.hasPriorDrips(mintType, babtAddress, kmaAddress))
     : false;
   const hasBabtBalance = (isValidBabtAddress && isValidKmaAddress)
-    ? (await util.hasBalance(babtAddress))
+    ? (await util.hasBalance(mintType, babtAddress))
     : false;
 
-  console.log(`[drip] bab:${babtAddress},kma:${kmaAddress},prior:${prior},hasBabtBalance:${hasBabtBalance}`);    
+  console.log(`[drip] bab:${babtAddress},kma:${kmaAddress},prior:${prior},hasBabtBalance:${hasBabtBalance}`);
   return {
-    headers,
+    headers: util.headers,
     statusCode: 200,
     body: JSON.stringify(
       {
@@ -67,9 +58,9 @@ export const dripped = async (event) => {
   const prior = (isValidBabtAddress && isValidKmaAddress)
     ? (await db.hasPriorDrips(mintType, babtAddress, kmaAddress))
     : false;
-  console.log(`[dripped] bab:${babtAddress},kma:${kmaAddress},prior:${prior}`);    
+  console.log(`[dripped] bab:${babtAddress},kma:${kmaAddress},prior:${prior}`);
   return {
-    headers,
+    headers: util.headers,
     statusCode: 200,
     body: JSON.stringify(
       {
@@ -88,82 +79,8 @@ export const dripped = async (event) => {
 };
 
 export const shortlist = async (event) => {
-  const payload = JSON.parse(event.body);
-  const babtAddress = payload.shortlist.toLowerCase(); // only one address
-
-  const endpoint = config.get_endpoint();
-  const provider = new WsProvider(endpoint);
-  const api = await ApiPromise.create({ provider, noInitWarn: true });
-  await Promise.all([ api.isReady, cryptoWaitReady() ]);
-
-  const mintType = "BAB";
-  const isValidBabtAddress = !!/^(0x)?[0-9a-f]{40}$/i.test(babtAddress);
-  const hasDbPrior = isValidBabtAddress ? (await db.hasPriorAllowlist(mintType, babtAddress)) : false;
-  const hasBabtBalance = isValidBabtAddress ? (await util.hasBalance(babtAddress)) : false;
-
-  const identity = (!!event.requestContext)
-    ? event.requestContext.identity
-    : undefined;
-  console.log(`[shortlist query] bab:${babtAddress},prior:${hasDbPrior},balance:${hasBabtBalance}`);    
-
-  const status = (!isValidBabtAddress) ? 'invalid-babt-address'
-    : !hasBabtBalance ? 'zero-balance-observed'
-      : (hasDbPrior) ? 'prior-allow-observed'
-        // : (await action.hasOnchainPrior(api, mintType, babtAddress, identity)) ? 'prior-allow-observed'
-          : (await action.allowlistNow(api, mintType, babtAddress, identity)) ? 'allow-success'
-            : 'allow-fail';
-  var token = 0;
-  if(status === 'allow-success' || status === 'prior-allow-observed') {
-    const tokenId = await util.tokenIdOf(babtAddress);
-    token = tokenId.result;
-    console.log(`[shortlist result] bab:${babtAddress},token:${token},status:${status}`);
-  }          
-  const result = {
-    status,
-    token
-  };
-  return {
-    headers,
-    statusCode: 200,
-    body: JSON.stringify(result, null, 2),
-  };
-};
-
-// export const shortlist = async (event) => {
-//   const response = {
-//     ...(!!event.headers.Authorization && (event.headers.Authorization.split(' ').length === 2)) && {
-//       signer: event.headers.Authorization.split(' ')[0],
-//       signature: event.headers.Authorization.split(' ')[1],
-//       payload: JSON.parse(event.body),
-//     },
-//   };
-//   await cryptoWaitReady();
-//   if (
-//     isValidSubstrateAddress(response.signer)
-//     && signatureVerify(JSON.stringify(JSON.parse(event.body)), hexToU8a(response.signature), u8aToHex(decodeAddress(response.signer))).isValid
-//   ) {
-//     const shortlistSigner = new Keyring({ type: 'sr25519' }).addFromMnemonic(signer[encodeAddress(decodeAddress(response.signer), 78)]);
-//     const provider = new WsProvider(endpoint.zqhxuyuan);
-//     const api = await ApiPromise.create({ provider });
-//     await api.isReady;
-//     await Promise.all(response.payload.shortlist.map((address) => api.tx.mantaSbt.allowlistEvmAccount({ Bab: address }).signAndSend(shortlistSigner)));
-//   }
-//   return {
-//     headers: {
-//       'Access-Control-Allow-Origin': '*',
-//       'Access-Control-Allow-Credentials': true,
-//       'Content-Type': 'application/json',
-//     },
-//     statusCode: 200, //isValid ? 200 : 401,
-//     body: JSON.stringify(response, null, 2),
-//   };
-// };
-
-// const cache = {
-//   chunk: {
-//     size: 50,
-//   },
-// };
+  return await short.shortlist(event);
+}
 
 // export const babtAccountDiscovery = async() => {
 //   const stopwatch = { start: performance.now() };

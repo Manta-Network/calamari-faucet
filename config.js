@@ -2,7 +2,8 @@ export const endpoint = {
     calamari: 'wss://i.calamari.systems',
     binance: 'https://bsc-dataseed.binance.org',
     // binance: 'https://bsc-dataseed4.ninicoin.io',
-    testing: 'wss://zenlink.zqhxuyuan.cloud:444',
+    // testing: 'wss://zenlink.zqhxuyuan.cloud:444',
+    testing: 'wss://c1.calamari.seabird.systems',
     staging: 'wss://c1.calamari.seabird.systems',
 };
 

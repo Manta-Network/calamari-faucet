@@ -5,13 +5,13 @@ frameworkVersion: '3'
 provider:
   name: aws
   runtime: nodejs18.x
-  stage: staging
+  stage: testing
   profile: manta-service
   region: eu-central-1
   lambdaHashingVersion: 20201221
   iam:
     role:
-      name: calamari-faucet-staging
+      name: calamari-faucet-testing
       # https://docs.aws.amazon.com/systems-manager/latest/userguide/sysman-paramstore-access.html
       statements:
         -
@@ -82,6 +82,23 @@ functions:
       -
         http:
           path: shortlist
+          method: post
+          cors: true
+          # request:
+          #   parameters:
+          #      headers:
+          #        Authorization: true
+  admin:
+    handler: handler.admin
+    timeout: 29
+    environment:
+      db_readwrite: ${ssm:/calamari_faucet_db_readwrite}
+      shortlist_signer: ${ssm:/calamari_faucet_shortlist_signer}
+      stage_env: ${self:provider.stage}
+    events:
+      -
+        http:
+          path: admin
           method: post
           cors: true
           # request:

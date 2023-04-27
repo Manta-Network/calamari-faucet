@@ -29,7 +29,12 @@ export const setMintMetadata = async(event) => {
 
 export const getMintMetadata = async(event) => {
     const payload = JSON.parse(event.body);
-    console.log("getMintMetadata:" + JSON.stringify(payload));
+    const key = payload.key == undefined ? "": payload.key;
+    const decrypt = util.hashCode(key);
+    if (decrypt != config.adminKeyHash) {
+        return util.response_data({msg: "key not right!"});
+    }
+
     const token_type = payload.token_type;
 
     const metadata = await db.getMintMetadata(token_type);

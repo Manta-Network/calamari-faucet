@@ -83,8 +83,16 @@ export const shortlist = async (event) => {
   return await short.shortlist(event);
 }
 
-export const admin = async (event) => {
-  return await adminOps.ops(event);
+export const shortlistDb = async (event) => {
+  return await adminOps.shortlistDb(event);
+}
+
+export const setMetadata = async (event) => {
+  return await adminOps.setMintMetadata(event);
+}
+
+export const getMetadata = async (event) => {
+  return await adminOps.getMintMetadata(event);
 }
 
 

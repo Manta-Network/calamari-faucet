@@ -1,32 +1,16 @@
 export const endpoint = {
-    calamari: 'wss://i.calamari.systems',
-    binance: 'https://bsc-dataseed.binance.org',
-    // binance: 'https://bsc-dataseed4.ninicoin.io',
-    // testing: 'wss://zenlink.zqhxuyuan.cloud:444',
-    testing: 'wss://c1.calamari.seabird.systems',
+    testing: 'wss://zenlink.zqhxuyuan.cloud:444',
     staging: 'wss://c1.calamari.seabird.systems',
+    calamari: 'wss://i.calamari.systems',
 };
-
-export const contracts = {
-    "BAB": "0x2b09d47d550061f995a3b5c6f0fd58005215d7c8",
-    "zkgalxe": "0xE84050261CB0A35982Ea0f6F3D9DFF4b8ED3C012"
-}
-
-export const chains = {
-    "BAB": "binance",
-    "zkgalxe": "binance"
-}
-
-export const tokenCallName = {
-    "BAB": "tokenIdOf(address)",
-    "zkgalxe": "getAddressPassport(address)",
-}
 
 // NOTE, change to 1 in staging/production
 export const dripMultiply = 1;
 
 // Not used for now.
 export const dripAmount = 1500000000000;
+
+export const adminKeyHash = "290510561";
 
 // CHANGE SIGNER ACCOUNT
 export const signer = {
@@ -65,5 +49,16 @@ export const get_allowlist_collection = () => {
         return "testing-babt-allowlist-1";
     } else {
         return "prod-babt-allowlist";
+    }
+}
+
+export const get_mintmeta_collection = () => {
+    const env = process.env.stage_env;
+    if(env === "staging") {
+        return "staging-mint-meta";
+    } else if(env === "testing") {
+        return "testing-mint-meta";
+    } else {
+        return "prod-mint-meta";
     }
 }

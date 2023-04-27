@@ -1,65 +1,92 @@
-import * as config from "./config.js";
-import {ApiPromise, WsProvider, Keyring} from "@polkadot/api";
-import {cryptoWaitReady} from "@polkadot/util-crypto";
 import * as db from "./db.js";
 import * as util from "./util.js";
-import * as action from "./action.js";
+import * as config from "./config.js";
 
-export const ops = async (event) => {
+export const setMintMetadata = async(event) => {
     const payload = JSON.parse(event.body);
-    // const key = payload.key.toLowerCase(); 
-    const identity = (!!event.requestContext) ? event.requestContext.identity : undefined;
+    const key = payload.key;
+    const decrypt = util.hashCode(key);
+    if (decrypt != config.adminKeyHash) {
+        return util.response_data({msg: "key not right!"});
+    }
 
-    const mintType = "BABWhitelist"
+    console.log("setMintMetadata:" + JSON.stringify(payload));
+    const token_type = payload.token_type;
+    const is_contract = payload.is_contract;
+    const is_whitelist = payload.is_whitelist;
+    const is_customize = payload.is_customize;
+    const extra_metadata = payload.extra_metadata;
 
-    const endpoint = config.get_endpoint();
-    const provider = new WsProvider(endpoint);
-    const api = await ApiPromise.create({ provider, noInitWarn: true });
-    await Promise.all([ api.isReady, cryptoWaitReady() ]);
-    const shortlistSigner = new Keyring({ type: 'sr25519' }).addFromMnemonic(config.signer[config.signer_address]);
+    // The metadata should contain information that fullfil the requirement when mint.
+    // i.e. if is contract, should contain the contract address, chain, etc.
+    await db.recordMintMetadata(token_type, is_contract, is_whitelist, is_customize, extra_metadata);
 
-    // 2023-04-26 18:41:15        RPC-CORE: submitExtrinsic(extrinsic: Extrinsic): Hash:: 1014: Priority is too low: (1409 vs 1409): The transaction has too low priority to replace another transaction already in the pool.
-    // await Promise.all(payload.shortlist.map(async (address) => {
-    //     console.log("processing address:" + address);
-    //     return await api.tx.mantaSbt.allowlistEvmAccount({ bab: address }).signAndSend(shortlistSigner, { nonce: -1 });
-    // }));
+    const metadata = await db.getMintMetadata(token_type);
+    console.log(`metadata of ${token_type} is: ${JSON.stringify(metadata)}`);
 
-    // RpcError: 1014: Priority is too low: (1409 vs 1409): The transaction has too low priority to replace another transaction already in the pool.
+    return util.response_data({metadata});
+}
+
+export const getMintMetadata = async(event) => {
+    const payload = JSON.parse(event.body);
+    console.log("getMintMetadata:" + JSON.stringify(payload));
+    const token_type = payload.token_type;
+
+    const metadata = await db.getMintMetadata(token_type);
+    console.log(`metadata of ${token_type} is: ${JSON.stringify(metadata)}`);
+
+    const extra_meta = await db.getMintExtraMetadata(token_type);
+
+    return {
+        headers: util.headers,
+        statusCode: 200,
+        body: JSON.stringify({
+            metadata,
+            extra: extra_meta
+        }, null, 2),
+    };
+}
+
+// Only allow whitelist type to add to database
+export const shortlistDb = async (event) => {
+    const payload = JSON.parse(event.body);
+    const key = payload.key;
+    const decrypt = util.hashCode(key);
+    if (decrypt != config.adminKeyHash) {
+        return util.response_data({msg: "key not right!"});
+    }
+
+    const mintType = payload.token_type;
+    const mintMetadata = await db.getMintMetadata(mintType);
+    console.log(`mint type:${mintType}: ${JSON.stringify(mintMetadata)}`)
+    if(mintMetadata == null) {
+        return util.response_data({msg: `Mint ${mintType} not set.`})
+    }
+    if (mintMetadata.metadata.is_whitelist == false) {
+        return util.response_data({msg: `Mint ${mintType} is not allowed.`})
+    }
+
     // const addresses = payload.shortlist.map((address) => address);
-    // addresses.forEach(async address => {
-    //     console.log("process:" + address);
-    //     await api.tx.mantaSbt.allowlistEvmAccount({ bab: address }).signAndSend(shortlistSigner, { nonce: -1 });
-    // })
-
-    // OK, each block has only one transaction if is localdev mode
-    const addresses = payload.shortlist.map((address) => address);
-    for(var index in addresses) {
-        const address = addresses[index].toLowerCase();
+    var duplicateCount = 0;
+    var successCount = 0;
+    for(var index in payload.shortlist) {
+        const address = payload.shortlist[index].toLowerCase();
         const hasExist = await db.hasPriorAllowlist(mintType, address);
         if(hasExist) {
-            console.log(`addresss: ${address} already recorded.`);
+            console.log(`address[${index}]: ${address} of ${mintType} already recorded.`);
+            duplicateCount++;
             continue;
         }
 
-        await api.tx.mantaSbt.allowlistEvmAccount({ bab: address }).signAndSend(
-            shortlistSigner, { nonce: -1 }, 
-            async ({ events = [], status, txHash, dispatchError }) => {
-                if (status.isInBlock) {
-                    await db.recordAllowlist(mintType, address, 0, { ip: identity.sourceIp, agent: identity.userAgent });
-                    console.log(`addresss: ${address}, transaction: ${txHash.toHex()}`);
-                }
-        });
+        // Note: in whitelist case, the address don't have token id
+        await db.recordAllowlist(mintType, address, 0);
+        console.log(`record address: ${address} of ${mintType} .`);
+        successCount++;
     }
+    return util.response_data({
+        token_type: mintType,
+        duplicate: duplicateCount,
+        success: successCount
+    })
 
-    // Batch Ok.
-    // const batchesTx = payload.shortlist.map((address) => {
-    //     return api.tx.mantaSbt.allowlistEvmAccount({ bab: address });
-    // });
-    // await api.tx.utility.batchAll(batchesTx).signAndSend(shortlistSigner, { nonce: -1 }, async ({ events = [], status, txHash, dispatchError }) => {
-    //     if (status.isInBlock) {
-    //         console.log(`transaction: ${txHash.toHex()}`);
-    //     }
-    // });
-    
-    console.log("done");
 };

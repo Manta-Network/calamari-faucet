@@ -2,12 +2,22 @@ import { decodeAddress, encodeAddress } from '@polkadot/keyring';
 import { hexToU8a, isHex } from '@polkadot/util';
 import utils from 'web3-utils';
 import * as config from './config.js';
+import * as db from "./db.js";
 
 export const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Credentials': true,
     'Content-Type': 'application/json',
 };
+
+export const response_data = (data) => {
+    return {
+        headers,
+        statusCode: 200,
+        body: JSON.stringify(data, null, 2),
+    };
+}
+
 
 export const isValidEthAddress = (ethAddress) => {
     return /^(0x)?[0-9a-f]{40}$/i.test(ethAddress);
@@ -75,20 +85,59 @@ export const ethCall = async (endpoint, contract, method, parameters = [], tag =
 export const hasBalance = async (mintType, ethAddress) => {
     const balance = await balanceOf(mintType, ethAddress);
     // console.log("balance:" + JSON.stringify(balance) + ",has:" + !!balance.result);
-    if (balance.result === "0x0000000000000000000000000000000000000000000000000000000000000000") {
+    if (balance == null || balance.result === "0x0000000000000000000000000000000000000000000000000000000000000000") {
         return false
     } else {
         return true
     }
 };
 
-export const balanceOf = async (mintType, babtAddress) => {
-    const endpoint = config.endpoint[config.chains[mintType]];
+export const balanceOf = async (mintType, address) => {
+    const mint_meta = await db.getMintMetadata(mintType);
+    const is_contract = mint_meta.is_contract;
+    const is_customize = mint_meta.is_customize;
+    if(!is_contract && !is_customize) {
+        // Note: if is whitelist, then the balance of address is zero
+        return null;
+    }
+    const endpoint = mint_meta.metadata.chain_scan_endpoint;
+    const contract = mint_meta.metadata.contract_address;
+    const balanceCallName = mint_meta.metadata.balance_call_nName;
+
+    // const endpoint = config.endpoint[config.chains[mintType]];
     // console.log("mintType:" + mintType + ",chains:" + config.chains[mintType] + ",endpoint:" + endpoint);
-    return await ethCall(endpoint, config.contracts[mintType], 'balanceOf(address)', [babtAddress]);
+    if (is_contract) {
+        return await ethCall(endpoint, contract, balanceCallName, [address]);
+    } else {
+        // TODO: customize call
+        return null;
+    }
 };
 
-export const tokenIdOf = async (mintType, babtAddress) => {
-    const endpoint = config.endpoint[config.chains[mintType]];
-    return await ethCall(endpoint, config.contracts[mintType], config.tokenCallName[mintType], [babtAddress]);
+export const tokenIdOf = async (mintType, address) => {
+    const mint_meta = await db.getMintMetadata(mintType);
+    const is_contract = mint_meta.is_contract;
+    const is_customize = mint_meta.is_customize;
+    if(!is_contract && !is_customize) {
+        // Note: if is whitelist, then the token id of address is zero
+        return null;
+    }
+    const endpoint = mint_meta.metadata.chain_scan_endpoint;
+    const contract = mint_meta.metadata.contract_address;
+    const tokenCallName = mint_meta.metadata.token_call_name;
+
+    // const endpoint = config.endpoint[config.chains[mintType]];
+    if (is_contract) {
+        return await ethCall(endpoint, contract, tokenCallName, [address]);
+    } else {
+        // TODO: customize call
+        return null;
+    }
 };
+
+export const hashCode = (s) => {
+    return s.split("").reduce(function(a, b) {
+        a = ((a << 5) - a) + b.charCodeAt(0);
+        return a & a;
+    }, 0);
+}

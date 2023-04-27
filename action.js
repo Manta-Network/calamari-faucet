@@ -46,11 +46,11 @@ export const dripNow = async (mintType, babtAddress, kmaAddress, identity) => {
   } catch (exception) {
     console.error(`drip babt: ${babtAddress}, kma: ${kmaAddress}, exception:`, exception);
   }
-  api.query.system.account(kmaAddress, async ({ data: { free: currentFree }, nonce: currentNonce }) => {
+  await api.query.system.account(kmaAddress, async ({data: {free: currentFree}, nonce: currentNonce}) => {
     const delta = currentFree.sub(previousFree);
     if (!delta.isZero() && (dripAmount === BigInt(delta))) {
       if ((dripAmount === BigInt(delta))) {
-        await db.recordDrip(mintType, babtAddress, kmaAddress, { ip: identity.sourceIp, agent: identity.userAgent });
+        await db.recordDrip(mintType, babtAddress, kmaAddress, {ip: identity.sourceIp, agent: identity.userAgent});
         finalized = true;
       }
       console.log(`drip babt: ${babtAddress}, kma: ${kmaAddress}, delta: ${delta}`);
@@ -66,6 +66,8 @@ export const dripNow = async (mintType, babtAddress, kmaAddress, identity) => {
 
 export const allowlistNow = async (api, mintType, babtAddress, identity) => {
   let finalized = false;
+
+  // TODO: change to dynamic runtime type query
   let address = {
     bab: babtAddress
   };
@@ -76,7 +78,10 @@ export const allowlistNow = async (api, mintType, babtAddress, identity) => {
   }
 
   const tokenId = await util.tokenIdOf(mintType, babtAddress);
-  const token_id = tokenId.result;
+  let token_id = 0;
+  if (tokenId != null) {
+    token_id = tokenId.result;
+  }
 
   // Query storage, if exists, then return
   const queryAllowInfo = await api.query.mantaSbt.evmAddressAllowlist(address);
@@ -123,32 +128,4 @@ export const allowlistNow = async (api, mintType, babtAddress, identity) => {
   const allowInfo = await api.query.mantaSbt.evmAddressAllowlist(address);
   console.log(`[shortlist] ${mintType}: ${babtAddress} got allowed, allow info:${JSON.stringify(allowInfo)}`);
   return finalized;
-}
-
-export const hasOnchainPrior = async (api, mintType, babtAddress, identity) => {
-  const address = {
-    bab: babtAddress
-  };
-  const queryAllowInfo = await api.query.mantaSbt.evmAddressAllowlist(address);
-  if(queryAllowInfo.isNone === true) {
-    // No exist, able to add to allowlist.
-    return false;
-  } else {
-    // exist on chain, maybe available or minted.
-    console.log(`[shortlist] bab:${babtAddress} exist onchain:${JSON.stringify(queryAllowInfo)}`);
-    if(!db.hasPriorAllowlist(mintType, babtAddress)) {
-      const tokenId = await util.tokenIdOf(mintType, babtAddress);
-      const token_id = tokenId.result;
-      await db.recordAllowlist(mintType, babtAddress, token_id, { ip: identity.sourceIp, agent: identity.userAgent });
-      console.log(`[shortlist] bab:${babtAddress} exist onchain, but not on db, put it now. token:${token_id}`);
-    }
-    // return true;
-
-    const json = JSON.parse(JSON.stringify(queryAllowInfo));
-    if(json.available != undefined) {
-      return true;
-    } else {
-      return false;
-    }
-  }
 }

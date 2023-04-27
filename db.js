@@ -1,11 +1,6 @@
-import { ApiPromise, WsProvider, Keyring } from '@polkadot/api';
 import { decodeAddress, encodeAddress } from '@polkadot/keyring';
 import { hexToU8a, isHex, stringToU8a, u8aToHex } from '@polkadot/util';
-import { cryptoWaitReady, signatureVerify } from '@polkadot/util-crypto';
-import utils from 'web3-utils';
 import { MongoClient } from 'mongodb';
-import { performance } from 'node:perf_hooks';
-import * as util from './util.js';
 import * as config from './config.js';
 
 const client = new MongoClient(process.env.db_readwrite);
@@ -72,6 +67,48 @@ export const recordAllowlist = async (mintType, babtAddress, token_id, identity)
     }
   );
   return (update.acknowledged && !!update.upsertedCount);
+};
+
+export const recordMintMetadata = async (token_type, is_contract, is_whitelist, is_customize, metadata) => {
+  const update = await client.db('calamari-faucet').collection(config.get_mintmeta_collection()).updateOne(
+    {
+      token_type
+    },
+    { 
+      $set: {
+        is_contract,
+        is_whitelist,
+        is_customize,
+        metadata,
+        time: new Date()
+      }
+    },
+    {
+      upsert: true,
+    }
+  );
+  return (update.acknowledged && !!update.upsertedCount);
+};
+
+export const getMintMetadata = async (token_type) => {
+  const metadata = (await Promise.all([
+    client.db('calamari-faucet').collection(config.get_mintmeta_collection()).findOne({ token_type }),
+  ])).filter((x) => (!!x));
+  if(metadata.length == 0) {
+    return null;
+  }
+  return metadata[0];
+};
+
+export const getMintExtraMetadata = async (token_type) => {
+  const metadata = (await Promise.all([
+    client.db('calamari-faucet').collection(config.get_mintmeta_collection()).findOne({ token_type }),
+  ])).filter((x) => (!!x));
+  if(metadata.length == 0) {
+    return null;
+  }
+  const extra_meta = metadata[0].metadata;
+  return extra_meta;
 };
 
 export const recordAccount = async (account) => (

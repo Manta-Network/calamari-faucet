@@ -88,8 +88,8 @@ functions:
           #   parameters:
           #      headers:
           #        Authorization: true
-  admin:
-    handler: handler.admin
+  shortlistDb:
+    handler: handler.shortlistDb
     timeout: 29
     environment:
       db_readwrite: ${ssm:/calamari_faucet_db_readwrite}
@@ -98,13 +98,35 @@ functions:
     events:
       -
         http:
-          path: admin
+          path: shortlistDb
           method: post
           cors: true
-          # request:
-          #   parameters:
-          #      headers:
-          #        Authorization: true
+  setMetadata:
+    handler: handler.setMetadata
+    timeout: 29
+    environment:
+      db_readwrite: ${ssm:/calamari_faucet_db_readwrite}
+      shortlist_signer: ${ssm:/calamari_faucet_shortlist_signer}
+      stage_env: ${self:provider.stage}
+    events:
+      -
+        http:
+          path: setMetadata
+          method: post
+          cors: true
+  getMetadata:
+    handler: handler.getMetadata
+    timeout: 29
+    environment:
+      db_readwrite: ${ssm:/calamari_faucet_db_readwrite}
+      shortlist_signer: ${ssm:/calamari_faucet_shortlist_signer}
+      stage_env: ${self:provider.stage}
+    events:
+      -
+        http:
+          path: getMetadata
+          method: post
+          cors: true
   # discovery:
   #   handler: handler.babtAccountDiscovery
   #   timeout: 30

@@ -84,13 +84,13 @@ export const allowlistNow = async (api, mintType, babtAddress, identity) => {
     const json = JSON.parse(JSON.stringify(queryAllowInfo));
     if(!(await db.hasPriorAllowlist(mintType, babtAddress))) {
       await db.recordAllowlist(mintType, babtAddress, token_id, { ip: identity.sourceIp, agent: identity.userAgent });
-      console.log(`[shortlist] ${mintType}:${babtAddress} token:${token_id} exist onchain, but not on db, put it now.`);
+      console.log(`[shortlist] ${mintType}:${babtAddress}, token:${token_id} exist onchain, but not on db, put it now.`);
     }
-    console.log(`address:${babtAddress} has onchain storage:${queryAllowInfo}`);
     if(json.available != undefined) {
+      console.log(`[shortlist] ${mintType}:${babtAddress}, available:${queryAllowInfo}`);
       return true;
     } else {
-      console.log(`[shortlist] ${mintType}:${babtAddress} already minted on chain!`);
+      console.log(`[shortlist] ${mintType}:${babtAddress}, already minted on chain!`);
       return false;
     }
   }
@@ -102,16 +102,14 @@ export const allowlistNow = async (api, mintType, babtAddress, identity) => {
   .signAndSend(shortlistSigner, { nonce: -1 }, async ({ events = [], status, txHash, dispatchError }) => {
     if (dispatchError) {
       if (dispatchError.isModule) {
-        const decoded = api.registry.findMetaError(dispatchError.asModule);
-        const { docs, name, section } = decoded;
-        console.log(`[shortlist] ${mintType}: ${babtAddress}, status: ${status.type}, dispatch error: ${section}.${name} - ${docs.join(' ')}`);
+        console.log(`[shortlist] ${mintType}:${babtAddress}, status: ${status.type}, dispatch error: ${section}.${name} - transaction: ${txHash.toHex()}`);
       } else {
-        console.log(`[shortlist] ${mintType}: ${babtAddress}, status: ${status.type}, dispatch error: ${dispatchError.toString()}`);
+        console.log(`[shortlist] ${mintType}:${babtAddress}, status: ${status.type}, dispatch error: ${dispatchError.toString()} - transaction: ${txHash.toHex()}`);
       }
     }
     // TODO: current manta endpoint has finalized issue, need to change to isFinalized
     if (status.isInBlock) {
-      console.log(`[shortlist] ${mintType} recordAllowlist: ${babtAddress}, status: ${status.type}, transaction: ${txHash.toHex()}`);
+      console.log(`[shortlist] ${mintType}:${babtAddress} recordAllowlist status: ${status.type}, transaction: ${txHash.toHex()}`);
       await db.recordAllowlist(mintType, babtAddress, token_id, { ip: identity.sourceIp, agent: identity.userAgent });
       finalized = true;
       unsub();
@@ -121,7 +119,7 @@ export const allowlistNow = async (api, mintType, babtAddress, identity) => {
     await new Promise(r => setTimeout(r, 1000));
   }
   const allowInfo = await api.query.mantaSbt.evmAddressAllowlist(address);
-  console.log(`[shortlist] ${mintType}: ${babtAddress} got allowed, allow info:${JSON.stringify(allowInfo)}`);
+  console.log(`[shortlist] ${mintType}:${babtAddress} return and got allowed:${JSON.stringify(allowInfo)}`);
   return finalized;
 }
 

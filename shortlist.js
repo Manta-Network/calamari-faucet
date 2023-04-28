@@ -14,7 +14,7 @@ export const shortlist = async (event) => {
     const isValidEthAddress = !!util.isValidEthAddress(ethAddress);
     const hasDbPrior = isValidEthAddress ? (await db.hasPriorAllowlist(mintType, ethAddress)) : false;
     const hasBalance = isValidEthAddress ? (await util.hasBalance(mintType, ethAddress)) : false;
-    console.log(`[shortlist query] ${mintType}:${ethAddress},prior:${hasDbPrior},balance:${hasBalance}`);
+    console.log(`[shortlist] ${mintType}:${ethAddress}, query prior:${hasDbPrior},balance:${hasBalance}`);
 
     let status = "";
     if (!isValidEthAddress) {
@@ -46,7 +46,7 @@ export const shortlist = async (event) => {
     if(status === 'allow-success' || status === 'prior-allow-observed') {
         const tokenId = await util.tokenIdOf(mintType, ethAddress);
         token = tokenId.result;
-        console.log(`[shortlist result] ${mintType}:${ethAddress},token:${token},status:${status}`);
+        console.log(`[shortlist] ${mintType}:${ethAddress}, result status:${status},token:${token}`);
     }
 
     return {

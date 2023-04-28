@@ -102,6 +102,8 @@ export const allowlistNow = async (api, mintType, babtAddress, identity) => {
   .signAndSend(shortlistSigner, { nonce: -1 }, async ({ events = [], status, txHash, dispatchError }) => {
     if (dispatchError) {
       if (dispatchError.isModule) {
+        const decoded = api.registry.findMetaError(dispatchError.asModule);
+        const { docs, name, section } = decoded;
         console.log(`[shortlist] ${mintType}:${babtAddress}, status: ${status.type}, dispatch error: ${section}.${name} - transaction: ${txHash.toHex()}`);
       } else {
         console.log(`[shortlist] ${mintType}:${babtAddress}, status: ${status.type}, dispatch error: ${dispatchError.toString()} - transaction: ${txHash.toHex()}`);

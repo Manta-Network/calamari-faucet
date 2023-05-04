@@ -3,6 +3,9 @@ import { hexToU8a, isHex } from '@polkadot/util';
 import utils from 'web3-utils';
 import * as config from './config.js';
 import * as db from "./db.js";
+import axios from 'axios';
+// const util = require('util')
+import util from 'util';
 
 export const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -17,7 +20,6 @@ export const response_data = (data) => {
         body: JSON.stringify(data, null, 2),
     };
 }
-
 
 export const isValidEthAddress = (ethAddress) => {
     return /^(0x)?[0-9a-f]{40}$/i.test(ethAddress);
@@ -110,7 +112,12 @@ export const balanceOf = async (mintType, address) => {
         return await ethCall(endpoint, contract, balanceCallName, [address]);
     } else {
         // TODO: customize call
-        return null;
+        const response = await customizeCall(mintType, address);
+        if(response != null) {
+            return response["data"]["has_sbt"];
+        } else {
+            return null;
+        }
     }
 };
 
@@ -131,7 +138,12 @@ export const tokenIdOf = async (mintType, address) => {
         return await ethCall(endpoint, contract, tokenCallName, [address]);
     } else {
         // TODO: customize call
-        return null;
+        const response = await customizeCall(mintType, address);
+        if(response != null) {
+            return response["data"]["token_id"];
+        } else {
+            return null;
+        }
     }
 };
 
@@ -141,3 +153,34 @@ export const hashCode = (s) => {
         return a & a;
     }, 0);
 }
+
+export const customizeCall = async (mintType, address) => {
+    const metadata = await db.getMintExtraMetadata(mintType);
+    if(metadata == null || metadata == undefined || metadata.request == undefined) {
+        return null;
+    }
+    // console.log("metadata:" + JSON.stringify(metadata));
+    // TODO: key of different mint type
+    const key_string = metadata.keyName;
+    var api_key = process.env[key_string];
+    if(api_key == undefined) {
+        api_key = metadata.keyValue;
+    }
+
+    const jsonRequest = JSON.stringify(metadata.request);
+    const request = jsonRequest.replace("$KEY$", api_key).replace("$ADDRESS$", address);
+    const json_para = JSON.parse(request);
+    // console.log("para:" + JSON.stringify(json_para));
+
+    const endpoint = metadata.httpUrl;
+    const httpType = metadata.httpType;
+    console.log("request to:" + endpoint + "," + mintType + ",address:" + address);
+
+    const json = await axios({
+        method: httpType,
+        url: endpoint,
+        data: json_para
+    });
+    // console.log("data:" + JSON.stringify(json.data));
+    return json.data;
+};

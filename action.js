@@ -64,60 +64,54 @@ export const dripNow = async (mintType, babtAddress, kmaAddress, identity) => {
   return finalized;
 };
 
-export const allowlistNow = async (api, mintType, babtAddress, identity) => {
+export const allowlistNow = async (api, mintType, mintId, evmAddress, identity) => {
   let finalized = false;
 
-  // TODO: change to dynamic runtime type query
-  let address = {
-    bab: babtAddress
-  };
-  if (mintType === "zkgalxe") {
-    address = {
-      galxe: babtAddress
-    }
-  }
-
-  const tokenId = await util.tokenIdOf(mintType, babtAddress);
+  const tokenId = await util.tokenIdOf(mintType, evmAddress);
   let token_id = 0;
   if (tokenId != null) {
     token_id = tokenId.result;
   }
 
   // Query storage, if exists, then return
-  const queryAllowInfo = await api.query.mantaSbt.evmAddressAllowlist(address);
+  // const queryAllowInfo = await api.query.mantaSbt.evmAddressAllowlist(address);
+  const queryAllowInfo = await api.query.mantaSbt.evmAccountAllowlist(mintId, evmAddress);
+  console.log(`query onchain mintId:${mintId}, address:${evmAddress}, token:${token_id}, result:${JSON.stringify(queryAllowInfo)}`);
+  
   if(queryAllowInfo.isNone !== true) {
     const json = JSON.parse(JSON.stringify(queryAllowInfo));
-    if(!(await db.hasPriorAllowlist(mintType, babtAddress))) {
-      await db.recordAllowlist(mintType, babtAddress, token_id, { ip: identity.sourceIp, agent: identity.userAgent });
-      console.log(`[shortlist] ${mintType}:${babtAddress} token:${token_id} exist onchain, but not on db, put it now.`);
+    if(!(await db.hasPriorAllowlist(mintType, evmAddress))) {
+      await db.recordAllowlist(mintType, evmAddress, token_id, { ip: identity.sourceIp, agent: identity.userAgent });
+      console.log(`[shortlist] ${mintType}:${evmAddress}, token:${token_id} exist onchain, but not on db, put it now.`);
     }
-    console.log(`address:${babtAddress} has onchain storage:${queryAllowInfo}`);
     if(json.available != undefined) {
+      console.log(`[shortlist] ${mintType}:${evmAddress}, available:${queryAllowInfo}`);
       return true;
     } else {
-      console.log(`[shortlist] ${mintType}:${babtAddress} already minted on chain!`);
+      console.log(`[shortlist] ${mintType}:${evmAddress}, already minted on chain!`);
       return false;
     }
   }
 
   const shortlistSigner = new Keyring({ type: 'sr25519' }).addFromMnemonic(config.signer[config.signer_address]);
-  console.log(`[shortlist] ${mintType} from signer: ${shortlistSigner.address} for ${babtAddress}`);
+  console.log(`[shortlist] ${mintType} FROM signer: ${shortlistSigner.address} TO ${evmAddress}`);
 
-  const unsub = await api.tx.mantaSbt.allowlistEvmAccount(address)
+  // const unsub = await api.tx.mantaSbt.allowlistEvmAccount(address)
+  const unsub = await api.tx.mantaSbt.allowlistEvmAccount(mintId, evmAddress)
   .signAndSend(shortlistSigner, { nonce: -1 }, async ({ events = [], status, txHash, dispatchError }) => {
     if (dispatchError) {
       if (dispatchError.isModule) {
         const decoded = api.registry.findMetaError(dispatchError.asModule);
         const { docs, name, section } = decoded;
-        console.log(`[shortlist] ${mintType}: ${babtAddress}, status: ${status.type}, dispatch error: ${section}.${name} - ${docs.join(' ')}`);
+        console.log(`[shortlist] ${mintType}:${evmAddress}, status: ${status.type}, dispatch error: ${section}.${name} - transaction: ${txHash.toHex()}`);
       } else {
-        console.log(`[shortlist] ${mintType}: ${babtAddress}, status: ${status.type}, dispatch error: ${dispatchError.toString()}`);
+        console.log(`[shortlist] ${mintType}:${evmAddress}, status: ${status.type}, dispatch error: ${dispatchError.toString()} - transaction: ${txHash.toHex()}`);
       }
     }
     // TODO: current manta endpoint has finalized issue, need to change to isFinalized
     if (status.isInBlock) {
-      console.log(`[shortlist] ${mintType} recordAllowlist: ${babtAddress}, status: ${status.type}, transaction: ${txHash.toHex()}`);
-      await db.recordAllowlist(mintType, babtAddress, token_id, { ip: identity.sourceIp, agent: identity.userAgent });
+      console.log(`[shortlist] ${mintType}:${evmAddress} recordAllowlist status: ${status.type}, transaction: ${txHash.toHex()}`);
+      await db.recordAllowlist(mintType, evmAddress, token_id, { ip: identity.sourceIp, agent: identity.userAgent });
       finalized = true;
       unsub();
     }
@@ -125,7 +119,8 @@ export const allowlistNow = async (api, mintType, babtAddress, identity) => {
   while (!finalized) {
     await new Promise(r => setTimeout(r, 1000));
   }
-  const allowInfo = await api.query.mantaSbt.evmAddressAllowlist(address);
-  console.log(`[shortlist] ${mintType}: ${babtAddress} got allowed, allow info:${JSON.stringify(allowInfo)}`);
+  // const allowInfo = await api.query.mantaSbt.evmAddressAllowlist(address);
+  const allowInfo = await api.query.mantaSbt.evmAccountAllowlist(mintId, evmAddress);
+  console.log(`[shortlist] ${mintType}:${evmAddress} return and got allowed:${JSON.stringify(allowInfo)}`);
   return finalized;
 }

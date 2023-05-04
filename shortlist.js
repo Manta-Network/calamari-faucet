@@ -23,10 +23,18 @@ export const shortlist = async (event) => {
     const is_contract = mintMetadata.is_contract;
     const is_whitelist = mintMetadata.is_whitelist;
     const is_customize = mintMetadata.is_customize;
+    const mint_id = mintMetadata.mint_id;
+    const metadata_tokenType = mintMetadata.token_type;
+    if(metadata_tokenType != mintType) {
+        return util.response_data({
+            status: 'allow-fail',
+            msg: `Mint ${mintType} is not matched.`
+        });
+    }
 
     const isValidEthAddress = !!util.isValidEthAddress(ethAddress);
     const hasDbPrior = isValidEthAddress ? (await db.hasPriorAllowlist(mintType, ethAddress)) : false;
-    console.log(`[shortlist query] ${mintType}:${ethAddress},prior:${hasDbPrior}`);
+    console.log(`[shortlist] ${mintType}:${ethAddress},query prior:${hasDbPrior}, isContract:${is_contract}, isWhitelist:${is_whitelist}, isCustomize:${is_customize}, mintId:${mint_id}`);
 
     let status = "";
     if (!isValidEthAddress) {
@@ -40,7 +48,7 @@ export const shortlist = async (event) => {
         // but not insert into on-chain storage. so in this case, only user request
         // this api, then the address will be insert into on-chain storage.
         if (is_whitelist) {
-            status = await onchainAction(event, mintType, ethAddress);
+            status = await onchainAction(event, mintType, mint_id, ethAddress);
         } else {
             status = 'prior-allow-observed';
         }
@@ -56,7 +64,7 @@ export const shortlist = async (event) => {
                 status = 'zero-balance-observed';
             } else {
                 // Not in db, but have balance, allow to mint
-                status = await onchainAction(event, mintType, ethAddress);
+                status = await onchainAction(event, mintType, mint_id, ethAddress);
             }
         }
     }
@@ -67,7 +75,7 @@ export const shortlist = async (event) => {
         if (tokenId != null) {
             token = tokenId.result;
         }
-        console.log(`[shortlist result] ${mintType}:${ethAddress},token:${token},status:${status}`);
+        console.log(`[shortlist] ${mintType}:${ethAddress}, result status:${status},token:${token.replaceAll("0","")}`);
     }
 
     return util.response_data({
@@ -76,7 +84,7 @@ export const shortlist = async (event) => {
     });
 };
 
-export const onchainAction = async(event, mintType, ethAddress) => {
+export const onchainAction = async(event, mintType, mintId, ethAddress) => {
     let status = "";
     const identity = (!!event.requestContext) ? event.requestContext.identity : undefined;
     const endpoint = config.get_endpoint();
@@ -84,7 +92,7 @@ export const onchainAction = async(event, mintType, ethAddress) => {
     const api = await ApiPromise.create({ provider, noInitWarn: true });
     await Promise.all([ api.isReady, cryptoWaitReady() ]);
 
-    const tx_flag = await action.allowlistNow(api, mintType, ethAddress, identity);
+    const tx_flag = await action.allowlistNow(api, mintType, mintId, ethAddress, identity);
     if (tx_flag === true) {
         status = 'allow-success';
     } else {

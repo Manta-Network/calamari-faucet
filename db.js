@@ -69,13 +69,14 @@ export const recordAllowlist = async (mintType, babtAddress, token_id, identity)
   return (update.acknowledged && !!update.upsertedCount);
 };
 
-export const recordMintMetadata = async (token_type, is_contract, is_whitelist, is_customize, metadata) => {
+export const recordMintMetadata = async (token_type, mint_id, is_contract, is_whitelist, is_customize, metadata) => {
   const update = await client.db('calamari-faucet').collection(config.get_mintmeta_collection()).updateOne(
     {
       token_type
     },
     { 
       $set: {
+        mint_id,
         is_contract,
         is_whitelist,
         is_customize,

@@ -13,7 +13,7 @@ export const shortlist = async (event) => {
 
     const mintMetadata = await db.getMintMetadata(mintType);
     if(mintMetadata == null) {
-        console.log(`mintType:${mintType} haven't metadata set, plz contact admin`);
+        console.log(`mintType: ${mintType} haven't metadata set, plz contact admin`);
         return util.response_data({
             status: 'allow-fail',
             msg: `Mint ${mintType} is not allowed.`
@@ -34,7 +34,7 @@ export const shortlist = async (event) => {
 
     const isValidEthAddress = !!util.isValidEthAddress(ethAddress);
     const hasDbPrior = isValidEthAddress ? (await db.hasPriorAllowlist(mintType, ethAddress)) : false;
-    console.log(`[shortlist] ${mintType}:${ethAddress},query prior:${hasDbPrior}, isContract:${is_contract}, isWhitelist:${is_whitelist}, isCustomize:${is_customize}, mintId:${mint_id}`);
+    console.log(`[shortlist] ${mintType}: ${ethAddress}, query prior:${hasDbPrior}, isContract:${is_contract}, isWhitelist:${is_whitelist}, isCustomize:${is_customize}, mintId:${mint_id}`);
 
     let status = "";
     if (!isValidEthAddress) {
@@ -75,7 +75,7 @@ export const shortlist = async (event) => {
         if (tokenId != null) {
             token = tokenId.result;
         }
-        console.log(`[shortlist] ${mintType}:${ethAddress}, result status:${status},token:${token.replaceAll("0","")}`);
+        console.log(`[shortlist] ${mintType}: ${ethAddress}, result status:${status},token:${token.replaceAll("0","")}`);
     }
 
     return util.response_data({

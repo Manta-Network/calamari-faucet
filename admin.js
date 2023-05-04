@@ -43,11 +43,8 @@ export const getMintMetadata = async(event) => {
     const metadata = await db.getMintMetadata(token_type);
     console.log(`metadata of ${token_type} is: ${JSON.stringify(metadata)}`);
 
-    const extra_meta = await db.getMintExtraMetadata(token_type);
-
     return util.response_data({
         metadata,
-        extra: extra_meta
     });
 }
 
@@ -67,6 +64,12 @@ export const getTokenInfo = async(event) => {
 
 export const shortlistChain = async (event) => {
     const payload = JSON.parse(event.body);
+    const key = payload.key;
+    const decrypt = util.hashCode(key);
+    if (decrypt != config.adminKeyHash) {
+        return util.response_data({msg: "key not right!"});
+    }
+
     const addresses = payload.shortlist.map((address) => address);
 
     const endpoint = config.get_endpoint();

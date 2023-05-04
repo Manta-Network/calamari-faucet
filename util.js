@@ -104,7 +104,7 @@ export const balanceOf = async (mintType, address) => {
     }
     const endpoint = mint_meta.metadata.chain_scan_endpoint;
     const contract = mint_meta.metadata.contract_address;
-    const balanceCallName = mint_meta.metadata.balance_call_nName;
+    const balanceCallName = mint_meta.metadata.balance_call_name;
 
     // const endpoint = config.endpoint[config.chains[mintType]];
     // console.log("mintType:" + mintType + ",chains:" + config.chains[mintType] + ",endpoint:" + endpoint);

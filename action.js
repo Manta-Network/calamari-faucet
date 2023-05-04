@@ -76,19 +76,19 @@ export const allowlistNow = async (api, mintType, mintId, evmAddress, identity) 
   // Query storage, if exists, then return
   // const queryAllowInfo = await api.query.mantaSbt.evmAddressAllowlist(address);
   const queryAllowInfo = await api.query.mantaSbt.evmAccountAllowlist(mintId, evmAddress);
-  console.log(`query onchain mintId:${mintId}, address:${evmAddress}, token:${token_id}, result:${JSON.stringify(queryAllowInfo)}`);
+  console.log(`query onchain mintId:${mintId}, address: ${evmAddress}, token:${token_id}, result:${JSON.stringify(queryAllowInfo)}`);
   
   if(queryAllowInfo.isNone !== true) {
     const json = JSON.parse(JSON.stringify(queryAllowInfo));
     if(!(await db.hasPriorAllowlist(mintType, evmAddress))) {
       await db.recordAllowlist(mintType, evmAddress, token_id, { ip: identity.sourceIp, agent: identity.userAgent });
-      console.log(`[shortlist] ${mintType}:${evmAddress}, token:${token_id} exist onchain, but not on db, put it now.`);
+      console.log(`[shortlist] ${mintType}: ${evmAddress}, token:${token_id} exist onchain, but not on db, put it now.`);
     }
     if(json.available != undefined) {
-      console.log(`[shortlist] ${mintType}:${evmAddress}, available:${queryAllowInfo}`);
+      console.log(`[shortlist] ${mintType}: ${evmAddress}, available:${queryAllowInfo}`);
       return true;
     } else {
-      console.log(`[shortlist] ${mintType}:${evmAddress}, already minted on chain!`);
+      console.log(`[shortlist] ${mintType}: ${evmAddress}, already minted on chain!`);
       return false;
     }
   }
@@ -103,14 +103,14 @@ export const allowlistNow = async (api, mintType, mintId, evmAddress, identity) 
       if (dispatchError.isModule) {
         const decoded = api.registry.findMetaError(dispatchError.asModule);
         const { docs, name, section } = decoded;
-        console.log(`[shortlist] ${mintType}:${evmAddress}, status: ${status.type}, dispatch error: ${section}.${name} - transaction: ${txHash.toHex()}`);
+        console.log(`[shortlist] ${mintType}: ${evmAddress}, status: ${status.type}, dispatch error: ${section}.${name} - transaction: ${txHash.toHex()}`);
       } else {
-        console.log(`[shortlist] ${mintType}:${evmAddress}, status: ${status.type}, dispatch error: ${dispatchError.toString()} - transaction: ${txHash.toHex()}`);
+        console.log(`[shortlist] ${mintType}: ${evmAddress}, status: ${status.type}, dispatch error: ${dispatchError.toString()} - transaction: ${txHash.toHex()}`);
       }
     }
     // TODO: current manta endpoint has finalized issue, need to change to isFinalized
     if (status.isInBlock) {
-      console.log(`[shortlist] ${mintType}:${evmAddress} recordAllowlist status: ${status.type}, transaction: ${txHash.toHex()}`);
+      console.log(`[shortlist] ${mintType}: ${evmAddress} recordAllowlist status: ${status.type}, transaction: ${txHash.toHex()}`);
       await db.recordAllowlist(mintType, evmAddress, token_id, { ip: identity.sourceIp, agent: identity.userAgent });
       finalized = true;
       unsub();
@@ -121,6 +121,6 @@ export const allowlistNow = async (api, mintType, mintId, evmAddress, identity) 
   }
   // const allowInfo = await api.query.mantaSbt.evmAddressAllowlist(address);
   const allowInfo = await api.query.mantaSbt.evmAccountAllowlist(mintId, evmAddress);
-  console.log(`[shortlist] ${mintType}:${evmAddress} return and got allowed:${JSON.stringify(allowInfo)}`);
+  console.log(`[shortlist] ${mintType}: ${evmAddress} return and got allowed:${JSON.stringify(allowInfo)}`);
   return finalized;
 }

@@ -68,7 +68,7 @@ export const shortlist = async (event) => {
         }
     }
 
-    let token = 0;
+    let token = "0x00";
     if(status === 'allow-success' || status === 'prior-allow-observed') {
         const tokenId = await util.tokenIdOf(mintType, ethAddress);
         if (tokenId != null) {

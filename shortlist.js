@@ -48,10 +48,9 @@ export const shortlist = async (event) => {
         // but not insert into on-chain storage. so in this case, only user request
         // this api, then the address will be insert into on-chain storage.
         if (is_whitelist) {
-            status = await onchainAction(event, mintType, mint_id, ethAddress);
-        } else {
-            status = 'prior-allow-observed';
+            await onchainAction(event, mintType, mint_id, ethAddress);
         }
+        status = 'prior-allow-observed';
     } else {
         if (is_whitelist) {
             // Not in db if is whitelist case, then user don't allow to mint.
@@ -75,7 +74,7 @@ export const shortlist = async (event) => {
         if (tokenId != null) {
             token = tokenId.result;
         }
-        console.log(`[shortlist] ${mintType}: ${ethAddress}, result status:${status},token:${token.replaceAll("0","")}`);
+        console.log(`[shortlist] ${mintType}: ${ethAddress}, result status:${status},token:${token}`);
     }
 
     return util.response_data({

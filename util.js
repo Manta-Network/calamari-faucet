@@ -1,11 +1,8 @@
 import { decodeAddress, encodeAddress } from '@polkadot/keyring';
 import { hexToU8a, isHex } from '@polkadot/util';
 import utils from 'web3-utils';
-import * as config from './config.js';
 import * as db from "./db.js";
 import axios from 'axios';
-// const util = require('util')
-import util from 'util';
 
 export const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -37,6 +34,13 @@ export const isValidSubstrateAddress = (address) => {
         return false;
     }
 };
+
+export const hashCode = (s) => {
+    return s.split("").reduce(function(a, b) {
+        a = ((a << 5) - a) + b.charCodeAt(0);
+        return a & a;
+    }, 0);
+}
 
 // first 4 bytes of keccak-256 hash
 // see: https://emn178.github.io/online-tools/keccak_256.html
@@ -87,11 +91,17 @@ export const ethCall = async (endpoint, contract, method, parameters = [], tag =
 export const hasBalance = async (mintType, ethAddress) => {
     const balance = await balanceOf(mintType, ethAddress);
     // console.log("balance:" + JSON.stringify(balance) + ",has:" + !!balance.result);
-    if (balance == null || balance.result === "0x0000000000000000000000000000000000000000000000000000000000000000") {
-        return false
-    } else {
-        return true
+    if(mintType == "zkreadon") {
+        if(balance == 1) {
+            return true;
+        }
+        return false;
     }
+
+    if (balance == null || balance === "0x0000000000000000000000000000000000000000000000000000000000000000") {
+        return false;
+    }
+    return true;
 };
 
 export const balanceOf = async (mintType, address) => {
@@ -102,22 +112,28 @@ export const balanceOf = async (mintType, address) => {
         // Note: if is whitelist, then the balance of address is zero
         return null;
     }
-    const endpoint = mint_meta.metadata.chain_scan_endpoint;
-    const contract = mint_meta.metadata.contract_address;
-    const balanceCallName = mint_meta.metadata.balance_call_name;
 
-    // const endpoint = config.endpoint[config.chains[mintType]];
-    // console.log("mintType:" + mintType + ",chains:" + config.chains[mintType] + ",endpoint:" + endpoint);
     if (is_contract) {
-        return await ethCall(endpoint, contract, balanceCallName, [address]);
+        const endpoint = mint_meta.metadata.chain_scan_endpoint;
+        const contract = mint_meta.metadata.contract_address;
+        const balanceCallName = mint_meta.metadata.balance_call_name;
+    
+        const call_result = await ethCall(endpoint, contract, balanceCallName, [address]);
+        return call_result.result;
+    }
+
+    // customize call
+    if(mintType != "zkreadon") {
+        return null;
+    }
+
+    // zkreadon
+    const response = await customizeCall(mintType, address);
+    console.log(`customize allowlist: ${mintType} addr: ${address}, resp: ${JSON.stringify(response)}`);
+    if(response != null) {
+        return response["data"]["has_sbt"];
     } else {
-        // TODO: customize call
-        const response = await customizeCall(mintType, address);
-        if(response != null) {
-            return response["data"]["has_sbt"];
-        } else {
-            return null;
-        }
+        return null;
     }
 };
 
@@ -129,37 +145,36 @@ export const tokenIdOf = async (mintType, address) => {
         // Note: if is whitelist, then the token id of address is zero
         return null;
     }
-    const endpoint = mint_meta.metadata.chain_scan_endpoint;
-    const contract = mint_meta.metadata.contract_address;
-    const tokenCallName = mint_meta.metadata.token_call_name;
 
-    // const endpoint = config.endpoint[config.chains[mintType]];
     if (is_contract) {
-        return await ethCall(endpoint, contract, tokenCallName, [address]);
+        const endpoint = mint_meta.metadata.chain_scan_endpoint;
+        const contract = mint_meta.metadata.contract_address;
+        const tokenCallName = mint_meta.metadata.token_call_name;
+    
+        const call_result = await ethCall(endpoint, contract, tokenCallName, [address]);
+        return call_result.result;
+    }
+
+    // customize call
+    if(mintType != "zkreadon") {
+        return null;
+    }
+
+    // zkreadon
+    const response = await customizeCall(mintType, address);
+    console.log(`customize tokenIdOf: ${mintType} addr: ${address}, resp: ${JSON.stringify(response)}`);
+    if(response != null) {
+        return response["data"]["token_id"];
     } else {
-        // TODO: customize call
-        const response = await customizeCall(mintType, address);
-        if(response != null) {
-            return response["data"]["token_id"];
-        } else {
-            return null;
-        }
+        return null;
     }
 };
-
-export const hashCode = (s) => {
-    return s.split("").reduce(function(a, b) {
-        a = ((a << 5) - a) + b.charCodeAt(0);
-        return a & a;
-    }, 0);
-}
 
 export const customizeCall = async (mintType, address) => {
     const metadata = await db.getMintExtraMetadata(mintType);
     if(metadata == null || metadata == undefined || metadata.request == undefined) {
         return null;
     }
-    // console.log("metadata:" + JSON.stringify(metadata));
     // TODO: key of different mint type
     const key_string = metadata.keyName;
     var api_key = process.env[key_string];
@@ -170,17 +185,15 @@ export const customizeCall = async (mintType, address) => {
     const jsonRequest = JSON.stringify(metadata.request);
     const request = jsonRequest.replace("$KEY$", api_key).replace("$ADDRESS$", address);
     const json_para = JSON.parse(request);
-    // console.log("para:" + JSON.stringify(json_para));
-
+    
     const endpoint = metadata.httpUrl;
     const httpType = metadata.httpType;
-    console.log("request to:" + endpoint + "," + mintType + ",address:" + address);
+    // console.log("request " + request + "to:" + endpoint + "," + mintType + ",address:" + address);
 
     const json = await axios({
         method: httpType,
         url: endpoint,
         data: json_para
     });
-    // console.log("data:" + JSON.stringify(json.data));
     return json.data;
 };

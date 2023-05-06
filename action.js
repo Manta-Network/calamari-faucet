@@ -70,7 +70,7 @@ export const allowlistNow = async (api, mintType, mintId, evmAddress, identity) 
   const tokenId = await util.tokenIdOf(mintType, evmAddress);
   let token_id = 0;
   if (tokenId != null) {
-    token_id = tokenId.result;
+    token_id = tokenId;
   }
 
   // Query storage, if exists, then return

@@ -72,7 +72,7 @@ export const shortlist = async (event) => {
     if(status === 'allow-success' || status === 'prior-allow-observed') {
         const tokenId = await util.tokenIdOf(mintType, ethAddress);
         if (tokenId != null) {
-            token = tokenId.result;
+            token = tokenId;
         }
         console.log(`[shortlist] ${mintType}: ${ethAddress}, result status:${status},token:${token}`);
     }

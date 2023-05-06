@@ -13,7 +13,7 @@ export const setMintMetadata = async(event) => {
     }
 
     console.log("setMintMetadata:" + JSON.stringify(payload));
-    const token_type = payload.token_type;
+    const token_type = payload.token_type.toLowerCase();
     const mint_id = payload.mint_id;
     const is_contract = payload.is_contract;
     const is_whitelist = payload.is_whitelist;
@@ -38,7 +38,7 @@ export const getMintMetadata = async(event) => {
         return util.response_data({msg: "key not right!"});
     }
 
-    const token_type = payload.token_type;
+    const token_type = payload.token_type.toLowerCase();
 
     const metadata = await db.getMintMetadata(token_type);
     console.log(`metadata of ${token_type} is: ${JSON.stringify(metadata)}`);
@@ -50,15 +50,30 @@ export const getMintMetadata = async(event) => {
 
 export const getTokenInfo = async(event) => {
     const payload = JSON.parse(event.body);
-    const token_type = payload.token_type;
-    const address = payload.address;
+    const token_type = payload.token_type.toLowerCase();
+    const address = payload.address.toLowerCase();
 
     const balance = await util.balanceOf(token_type, address);
     const token = await util.tokenIdOf(token_type, address);
+    const hasBalance = await util.hasBalance(token_type, address);
+    const hasDB = await db.hasPriorAllowlist(token_type, address);
+    const metadata = await db.getMintMetadata(token_type);
+    const mintId = metadata.mint_id;
+
+    const endpoint = config.get_endpoint();
+    const provider = new WsProvider(endpoint);
+    const api = await ApiPromise.create({ provider, noInitWarn: true });
+    await Promise.all([ api.isReady, cryptoWaitReady() ]);
+
+    const queryAllowInfo = await api.query.mantaSbt.evmAccountAllowlist(mintId, address);
 
     return util.response_data({
+        hasDB,
+        hasBalance,
         balance,
-        token
+        token,
+        mintId,
+        onchain: queryAllowInfo
     });
 }
 
@@ -104,12 +119,12 @@ export const shortlistDb = async (event) => {
 
     const mintType = payload.token_type;
     const mintMetadata = await db.getMintMetadata(mintType);
-    console.log(`mint type:${mintType}: ${JSON.stringify(mintMetadata)}`)
+    console.log(`mint type:${mintType}: ${JSON.stringify(mintMetadata)}`);
     if(mintMetadata == null) {
-        return util.response_data({msg: `Mint ${mintType} not set.`})
+        return util.response_data({msg: `Mint ${mintType} not set.`});
     }
     if (mintMetadata.metadata.is_whitelist == false) {
-        return util.response_data({msg: `Mint ${mintType} is not allowed.`})
+        return util.response_data({msg: `Mint ${mintType} is not allowed.`});
     }
 
     // const addresses = payload.shortlist.map((address) => address);

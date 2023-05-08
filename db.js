@@ -23,6 +23,14 @@ export const hasPriorAllowlist = async (mintType, babtAddress) => {
   return (allowlist.length > 0);
 };
 
+export const getOnePriorAllowlist = async (mintType, babtAddress) => {
+  const allowlist = (await Promise.all([
+    client.db('calamari-faucet').collection(config.get_allowlist_collection()).findOne({ babtAddress, mintType }),
+  ])).filter((x) => (!!x));
+  // console.log("hasPriorAllowlist:" + JSON.stringify(allowlist));
+  return allowlist;
+};
+
 export const recordDrip = async (mintType, babtAddress, kmaAddress, identity) => {
   const substrateAddress = encodeAddress(isHex(kmaAddress) ? hexToU8a(kmaAddress) : decodeAddress(kmaAddress));
   const update = await client.db('calamari-faucet').collection(config.get_drip_collection()).updateOne(

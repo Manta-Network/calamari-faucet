@@ -51,32 +51,71 @@ export const getMintMetadata = async(event) => {
 export const getTokenInfo = async(event) => {
     const payload = JSON.parse(event.body);
     const address = payload.address.toLowerCase();
-
+    const key = payload.key;
+    const decrypt = util.hashCode(key);
+    if (decrypt != config.adminKeyHash) {
+        return util.response_data({msg: "key not right!"});
+    }
+    
     const tokens = ["BAB", "zkgalxe", "zkreadon", "zkarbairdrop"];
     const results = [];
     for(var i=0;i<tokens.length;i++) {
         const token_type = tokens[i];
-
-        const balance = await util.balanceOf(token_type, address);
-        const token = await util.tokenIdOf(token_type, address);
-        const hasBalance = await util.hasBalance(token_type, address);
+        const mintMetadata = await db.getMintMetadata(token_type);
+        const mintId = mintMetadata.mint_id;
+        const is_contract = mintMetadata.is_contract;
+        const is_whitelist = mintMetadata.is_whitelist;
+        const is_customize = mintMetadata.is_customize;
+        
+        // const balance = await util.balanceOf(token_type, address);
+        // const token = await util.tokenIdOf(token_type, address);
+        // const hasBalance = await util.hasBalance(token_type, address);
+        let hasBalance = null;
+        let callToken = null;
+        let callBalance = null;
+        let dbToken = null;
         const hasDB = await db.hasPriorAllowlist(token_type, address);
-        const metadata = await db.getMintMetadata(token_type);
-        const mintId = metadata.mint_id;
-    
+        const dbRecord = await db.getOnePriorAllowlist(token_type, address);
+        if(dbRecord.length > 0) {
+            dbToken = dbRecord[0]["allowlist"][0]["token_id"];
+        }
+            
         const endpoint = config.get_endpoint();
         const provider = new WsProvider(endpoint);
         const api = await ApiPromise.create({ provider, noInitWarn: true });
         await Promise.all([ api.isReady, cryptoWaitReady() ]);
-    
         const queryAllowInfo = await api.query.mantaSbt.evmAccountAllowlist(mintId, address);
+
+        if(is_contract) {
+            const endpoint = mintMetadata.metadata.chain_scan_endpoint;
+            const contract = mintMetadata.metadata.contract_address;
+            const balanceCallName = mintMetadata.metadata.balance_call_name;    
+            const tokenCallName = mintMetadata.metadata.token_call_name;
+
+            const call_result = await util.ethCall(endpoint, contract, balanceCallName, [address]);
+            callBalance = call_result.result;
+            const call_result2 = await util.ethCall(endpoint, contract, tokenCallName, [address]);
+            callToken = call_result2.result;
+        }
+        if(is_customize) {
+            const response = await util.customizeCall(token_type, address);
+            if(response != null) {
+                callBalance = response["data"]["has_sbt"];
+                callToken = response["data"]["token_id"];
+            }
+        }
+
         results.push({
             token_type,
-            hasDB,
-            hasBalance,
-            balance,
-            token,
             mintId,
+            is_contract,
+            is_whitelist,
+            is_customize,
+            hasDB,
+            dbToken,
+            hasBalance,
+            callBalance,
+            callToken,
             onchain: queryAllowInfo
         });
     }

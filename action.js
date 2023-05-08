@@ -64,14 +64,8 @@ export const dripNow = async (mintType, babtAddress, kmaAddress, identity) => {
   return finalized;
 };
 
-export const allowlistNow = async (api, mintType, mintId, evmAddress, identity) => {
+export const allowlistNow = async (api, mintType, mintId, evmAddress, token_id, identity) => {
   let finalized = false;
-
-  const tokenId = await util.tokenIdOf(mintType, evmAddress);
-  let token_id = 0;
-  if (tokenId != null) {
-    token_id = tokenId;
-  }
 
   // Query storage, if exists, then return
   // const queryAllowInfo = await api.query.mantaSbt.evmAddressAllowlist(address);
@@ -111,7 +105,9 @@ export const allowlistNow = async (api, mintType, mintId, evmAddress, identity) 
     // TODO: current manta endpoint has finalized issue, need to change to isFinalized
     if (status.isInBlock) {
       console.log(`[shortlist] ${mintType}: ${evmAddress} recordAllowlist status: ${status.type}, transaction: ${txHash.toHex()}`);
-      await db.recordAllowlist(mintType, evmAddress, token_id, { ip: identity.sourceIp, agent: identity.userAgent });
+      if(!(await db.hasPriorAllowlist(mintType, evmAddress))) {
+        await db.recordAllowlist(mintType, evmAddress, token_id, { ip: identity.sourceIp, agent: identity.userAgent });
+      }
       finalized = true;
       unsub();
     }

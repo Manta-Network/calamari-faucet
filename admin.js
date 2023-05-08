@@ -13,7 +13,7 @@ export const setMintMetadata = async(event) => {
     }
 
     console.log("setMintMetadata:" + JSON.stringify(payload));
-    const token_type = payload.token_type.toLowerCase();
+    var token_type = payload.token_type.toLowerCase();
     if(token_type === "bab") {
         token_type = "BAB";
     }

@@ -38,12 +38,8 @@ export const getMintMetadata = async(event) => {
         return util.response_data({msg: "key not right!"});
     }
 
-    const token_type = payload.token_type.toLowerCase();
-
-    const metadata = await db.getMintMetadata(token_type);
-    console.log(`metadata of ${token_type} is: ${JSON.stringify(metadata)}`);
-
-    return util.response_data({metadata});
+    const metadatas = await db.getMintMetadatas();
+    return util.response_data({metadatas});
 }
 
 export const getTokenInfo = async(event) => {

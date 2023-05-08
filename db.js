@@ -109,6 +109,11 @@ export const getMintMetadata = async (token_type) => {
   return metadata[0];
 };
 
+export const getMintMetadatas = async () => {
+  const metadata = await client.db('calamari-faucet').collection(config.get_mintmeta_collection()).find().toArray();
+  return metadata;
+};
+
 export const getMintExtraMetadata = async (token_type) => {
   const metadata = (await Promise.all([
     client.db('calamari-faucet').collection(config.get_mintmeta_collection()).findOne({ token_type }),

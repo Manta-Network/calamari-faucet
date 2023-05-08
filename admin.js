@@ -50,31 +50,38 @@ export const getMintMetadata = async(event) => {
 
 export const getTokenInfo = async(event) => {
     const payload = JSON.parse(event.body);
-    const token_type = payload.token_type.toLowerCase();
     const address = payload.address.toLowerCase();
 
-    const balance = await util.balanceOf(token_type, address);
-    const token = await util.tokenIdOf(token_type, address);
-    const hasBalance = await util.hasBalance(token_type, address);
-    const hasDB = await db.hasPriorAllowlist(token_type, address);
-    const metadata = await db.getMintMetadata(token_type);
-    const mintId = metadata.mint_id;
+    const tokens = ["BAB", "zkgalxe", "zkreadon", "zkarbairdrop"];
+    const results = [];
+    for(var i=0;i<tokens.length;i++) {
+        const token_type = tokens[i];
 
-    const endpoint = config.get_endpoint();
-    const provider = new WsProvider(endpoint);
-    const api = await ApiPromise.create({ provider, noInitWarn: true });
-    await Promise.all([ api.isReady, cryptoWaitReady() ]);
+        const balance = await util.balanceOf(token_type, address);
+        const token = await util.tokenIdOf(token_type, address);
+        const hasBalance = await util.hasBalance(token_type, address);
+        const hasDB = await db.hasPriorAllowlist(token_type, address);
+        const metadata = await db.getMintMetadata(token_type);
+        const mintId = metadata.mint_id;
+    
+        const endpoint = config.get_endpoint();
+        const provider = new WsProvider(endpoint);
+        const api = await ApiPromise.create({ provider, noInitWarn: true });
+        await Promise.all([ api.isReady, cryptoWaitReady() ]);
+    
+        const queryAllowInfo = await api.query.mantaSbt.evmAccountAllowlist(mintId, address);
+        results.push({
+            token_type,
+            hasDB,
+            hasBalance,
+            balance,
+            token,
+            mintId,
+            onchain: queryAllowInfo
+        });
+    }
 
-    const queryAllowInfo = await api.query.mantaSbt.evmAccountAllowlist(mintId, address);
-
-    return util.response_data({
-        hasDB,
-        hasBalance,
-        balance,
-        token,
-        mintId,
-        onchain: queryAllowInfo
-    });
+    return util.response_data(results);
 }
 
 export const shortlistChain = async (event) => {

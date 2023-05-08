@@ -33,7 +33,6 @@ export const shortlist = async (event) => {
     }
 
     let status = "";
-    let response = null;
     let token = "0x00";
     let addressHasBalance = false;
 
@@ -74,6 +73,7 @@ export const shortlist = async (event) => {
         return util.response_data({status,token});
     } 
 
+    // Not in db cases...
     if(is_contract) {
         const endpoint = mintMetadata.metadata.chain_scan_endpoint;
         const contract = mintMetadata.metadata.contract_address;
@@ -85,7 +85,7 @@ export const shortlist = async (event) => {
         }
     }
     if(is_customize) {
-        response = await util.customizeCall(mintType, ethAddress);
+        const response = await util.customizeCall(mintType, ethAddress);
         if(response != null) {
             // mintType = zkreadon
             const balance = response["data"]["has_sbt"];
@@ -113,17 +113,10 @@ export const shortlist = async (event) => {
         token = call_result2.result;
     }
 
-    // const tokenId = await util.tokenIdOf(mintType, ethAddress);
     status = await onchainAction(event, mintType, mint_id, ethAddress, token);
+    console.log(`[shortlist] ${mintType}: ${ethAddress}, status:${status},token:${token}`);
 
-    if(status === 'allow-success') {
-        console.log(`[shortlist] ${mintType}: ${ethAddress}, result status:${status},token:${token}`);
-    }
-
-    return util.response_data({
-        status,
-        token
-    });
+    return util.response_data({status,token});
 };
 
 export const onchainAction = async(event, mintType, mintId, ethAddress, tokenId) => {

@@ -68,7 +68,6 @@ export const allowlistNow = async (api, mintType, mintId, evmAddress, token_id, 
   let finalized = false;
 
   // Query storage, if exists, then return
-  // const queryAllowInfo = await api.query.mantaSbt.evmAddressAllowlist(address);
   const queryAllowInfo = await api.query.mantaSbt.evmAccountAllowlist(mintId, evmAddress);
   console.log(`query onchain mintId:${mintId}, address: ${evmAddress}, token:${token_id}, result:${JSON.stringify(queryAllowInfo)}`);
   
@@ -90,7 +89,6 @@ export const allowlistNow = async (api, mintType, mintId, evmAddress, token_id, 
   const shortlistSigner = new Keyring({ type: 'sr25519' }).addFromMnemonic(config.signer[config.signer_address]);
   console.log(`[shortlist] ${mintType} FROM signer: ${shortlistSigner.address} TO ${evmAddress}`);
 
-  // const unsub = await api.tx.mantaSbt.allowlistEvmAccount(address)
   const unsub = await api.tx.mantaSbt.allowlistEvmAccount(mintId, evmAddress)
   .signAndSend(shortlistSigner, { nonce: -1 }, async ({ events = [], status, txHash, dispatchError }) => {
     if (dispatchError) {
@@ -115,7 +113,6 @@ export const allowlistNow = async (api, mintType, mintId, evmAddress, token_id, 
   while (!finalized) {
     await new Promise(r => setTimeout(r, 1000));
   }
-  // const allowInfo = await api.query.mantaSbt.evmAddressAllowlist(address);
   const allowInfo = await api.query.mantaSbt.evmAccountAllowlist(mintId, evmAddress);
   console.log(`[shortlist] ${mintType}: ${evmAddress} return and got allowed:${JSON.stringify(allowInfo)}`);
   return finalized;

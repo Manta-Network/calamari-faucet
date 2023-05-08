@@ -43,9 +43,7 @@ export const getMintMetadata = async(event) => {
     const metadata = await db.getMintMetadata(token_type);
     console.log(`metadata of ${token_type} is: ${JSON.stringify(metadata)}`);
 
-    return util.response_data({
-        metadata,
-    });
+    return util.response_data({metadata});
 }
 
 export const getTokenInfo = async(event) => {
@@ -56,7 +54,7 @@ export const getTokenInfo = async(event) => {
     if (decrypt != config.adminKeyHash) {
         return util.response_data({msg: "key not right!"});
     }
-    
+
     const tokens = ["BAB", "zkgalxe", "zkreadon", "zkarbairdrop"];
     const results = [];
     for(var i=0;i<tokens.length;i++) {
@@ -67,9 +65,6 @@ export const getTokenInfo = async(event) => {
         const is_whitelist = mintMetadata.is_whitelist;
         const is_customize = mintMetadata.is_customize;
         
-        // const balance = await util.balanceOf(token_type, address);
-        // const token = await util.tokenIdOf(token_type, address);
-        // const hasBalance = await util.hasBalance(token_type, address);
         let hasBalance = null;
         let callToken = null;
         let callBalance = null;

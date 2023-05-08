@@ -1,5 +1,5 @@
 import { decodeAddress, encodeAddress } from '@polkadot/keyring';
-import { hexToU8a, isHex, stringToU8a, u8aToHex } from '@polkadot/util';
+import { hexToU8a, isHex } from '@polkadot/util';
 import { MongoClient } from 'mongodb';
 import * as config from './config.js';
 
@@ -13,22 +13,6 @@ export const hasPriorDrips = async (mintType, babtAddress, kmaAddress) => {
   ])).filter((x) => (!!x));
   //console.log(drips);
   return (drips.length > 0);
-};
-
-export const hasPriorAllowlist = async (mintType, babtAddress) => {
-  const allowlist = (await Promise.all([
-    client.db('calamari-faucet').collection(config.get_allowlist_collection()).findOne({ babtAddress, mintType }),
-  ])).filter((x) => (!!x));
-  // console.log("hasPriorAllowlist:" + JSON.stringify(allowlist));
-  return (allowlist.length > 0);
-};
-
-export const getOnePriorAllowlist = async (mintType, babtAddress) => {
-  const allowlist = (await Promise.all([
-    client.db('calamari-faucet').collection(config.get_allowlist_collection()).findOne({ babtAddress, mintType }),
-  ])).filter((x) => (!!x));
-  // console.log("hasPriorAllowlist:" + JSON.stringify(allowlist));
-  return allowlist;
 };
 
 export const recordDrip = async (mintType, babtAddress, kmaAddress, identity) => {
@@ -53,6 +37,22 @@ export const recordDrip = async (mintType, babtAddress, kmaAddress, identity) =>
     }
   );
   return (update.acknowledged && !!update.upsertedCount);
+};
+
+export const hasPriorAllowlist = async (mintType, babtAddress) => {
+  const allowlist = (await Promise.all([
+    client.db('calamari-faucet').collection(config.get_allowlist_collection()).findOne({ babtAddress, mintType }),
+  ])).filter((x) => (!!x));
+  // console.log("hasPriorAllowlist:" + JSON.stringify(allowlist));
+  return (allowlist.length > 0);
+};
+
+export const getOnePriorAllowlist = async (mintType, babtAddress) => {
+  const allowlist = (await Promise.all([
+    client.db('calamari-faucet').collection(config.get_allowlist_collection()).findOne({ babtAddress, mintType }),
+  ])).filter((x) => (!!x));
+  // console.log("hasPriorAllowlist:" + JSON.stringify(allowlist));
+  return allowlist;
 };
 
 export const recordAllowlist = async (mintType, babtAddress, token_id, identity) => {
@@ -121,15 +121,15 @@ export const getMintExtraMetadata = async (token_type) => {
 };
 
 export const recordAccount = async (account) => (
-    await client.db('babt').collection('account').updateOne(
-      {
-        id: account.id,
-      },
-      {
-        $set: account,
-      },
-      {
-        upsert: true,
-      }
-    )
-  );
+  await client.db('babt').collection('account').updateOne(
+    {
+      id: account.id,
+    },
+    {
+      $set: account,
+    },
+    {
+      upsert: true,
+    }
+  )
+);

@@ -1,11 +1,6 @@
-import { ApiPromise, WsProvider, Keyring } from '@polkadot/api';
 import { decodeAddress, encodeAddress } from '@polkadot/keyring';
-import { hexToU8a, isHex, stringToU8a, u8aToHex } from '@polkadot/util';
-import { cryptoWaitReady, signatureVerify } from '@polkadot/util-crypto';
-import utils from 'web3-utils';
+import { hexToU8a, isHex } from '@polkadot/util';
 import { MongoClient } from 'mongodb';
-import { performance } from 'node:perf_hooks';
-import * as util from './util.js';
 import * as config from './config.js';
 
 const client = new MongoClient(process.env.db_readwrite);
@@ -18,14 +13,6 @@ export const hasPriorDrips = async (mintType, babtAddress, kmaAddress) => {
   ])).filter((x) => (!!x));
   //console.log(drips);
   return (drips.length > 0);
-};
-
-export const hasPriorAllowlist = async (mintType, babtAddress) => {
-  const allowlist = (await Promise.all([
-    client.db('calamari-faucet').collection(config.get_allowlist_collection()).findOne({ babtAddress, mintType }),
-  ])).filter((x) => (!!x));
-  // console.log("hasPriorAllowlist:" + JSON.stringify(allowlist));
-  return (allowlist.length > 0);
 };
 
 export const recordDrip = async (mintType, babtAddress, kmaAddress, identity) => {
@@ -52,6 +39,22 @@ export const recordDrip = async (mintType, babtAddress, kmaAddress, identity) =>
   return (update.acknowledged && !!update.upsertedCount);
 };
 
+export const hasPriorAllowlist = async (mintType, babtAddress) => {
+  const allowlist = (await Promise.all([
+    client.db('calamari-faucet').collection(config.get_allowlist_collection()).findOne({ babtAddress, mintType }),
+  ])).filter((x) => (!!x));
+  // console.log("hasPriorAllowlist:" + JSON.stringify(allowlist));
+  return (allowlist.length > 0);
+};
+
+export const getOnePriorAllowlist = async (mintType, babtAddress) => {
+  const allowlist = (await Promise.all([
+    client.db('calamari-faucet').collection(config.get_allowlist_collection()).findOne({ babtAddress, mintType }),
+  ])).filter((x) => (!!x));
+  // console.log("hasPriorAllowlist:" + JSON.stringify(allowlist));
+  return allowlist;
+};
+
 export const recordAllowlist = async (mintType, babtAddress, token_id, identity) => {
   const update = await client.db('calamari-faucet').collection(config.get_allowlist_collection()).updateOne(
     {
@@ -74,16 +77,64 @@ export const recordAllowlist = async (mintType, babtAddress, token_id, identity)
   return (update.acknowledged && !!update.upsertedCount);
 };
 
-export const recordAccount = async (account) => (
-    await client.db('babt').collection('account').updateOne(
-      {
-        id: account.id,
-      },
-      {
-        $set: account,
-      },
-      {
-        upsert: true,
+export const recordMintMetadata = async (token_type, mint_id, is_contract, is_whitelist, is_customize, metadata) => {
+  const update = await client.db('calamari-faucet').collection(config.get_mintmeta_collection()).updateOne(
+    {
+      token_type
+    },
+    { 
+      $set: {
+        mint_id,
+        is_contract,
+        is_whitelist,
+        is_customize,
+        metadata,
+        time: new Date()
       }
-    )
+    },
+    {
+      upsert: true,
+    }
   );
+  return (update.acknowledged && !!update.upsertedCount);
+};
+
+export const getMintMetadata = async (token_type) => {
+  const metadata = (await Promise.all([
+    client.db('calamari-faucet').collection(config.get_mintmeta_collection()).findOne({ token_type }),
+  ])).filter((x) => (!!x));
+  if(metadata.length == 0) {
+    return null;
+  }
+  return metadata[0];
+};
+
+export const getMintMetadatas = async () => {
+  const metadata = await client.db('calamari-faucet').collection(config.get_mintmeta_collection()).find().toArray();
+  return metadata;
+};
+
+export const getMintExtraMetadata = async (token_type) => {
+  const metadata = (await Promise.all([
+    client.db('calamari-faucet').collection(config.get_mintmeta_collection()).findOne({ token_type }),
+  ])).filter((x) => (!!x));
+  if(metadata.length == 0) {
+    return null;
+  }
+  const extra_meta = metadata[0].metadata;
+  return extra_meta;
+};
+
+export const recordAccount = async (account) => (
+  await client.db('babt').collection('account').updateOne(
+    {
+      id: account.id,
+    },
+    {
+      $set: account,
+    },
+    {
+      upsert: true,
+    }
+  )
+);

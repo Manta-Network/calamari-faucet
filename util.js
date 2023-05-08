@@ -1,13 +1,22 @@
 import { decodeAddress, encodeAddress } from '@polkadot/keyring';
 import { hexToU8a, isHex } from '@polkadot/util';
 import utils from 'web3-utils';
-import * as config from './config.js';
+import * as db from "./db.js";
+import axios from 'axios';
 
 export const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Credentials': true,
     'Content-Type': 'application/json',
 };
+
+export const response_data = (data) => {
+    return {
+        headers,
+        statusCode: 200,
+        body: JSON.stringify(data, null, 2),
+    };
+}
 
 export const isValidEthAddress = (ethAddress) => {
     return /^(0x)?[0-9a-f]{40}$/i.test(ethAddress);
@@ -25,6 +34,13 @@ export const isValidSubstrateAddress = (address) => {
         return false;
     }
 };
+
+export const hashCode = (s) => {
+    return s.split("").reduce(function(a, b) {
+        a = ((a << 5) - a) + b.charCodeAt(0);
+        return a & a;
+    }, 0);
+}
 
 // first 4 bytes of keccak-256 hash
 // see: https://emn178.github.io/online-tools/keccak_256.html
@@ -72,23 +88,30 @@ export const ethCall = async (endpoint, contract, method, parameters = [], tag =
     return json;
 };
 
-export const hasBalance = async (mintType, ethAddress) => {
-    const balance = await balanceOf(mintType, ethAddress);
-    // console.log("balance:" + JSON.stringify(balance) + ",has:" + !!balance.result);
-    if (balance.result === "0x0000000000000000000000000000000000000000000000000000000000000000") {
-        return false
-    } else {
-        return true
+export const customizeCall = async (mintType, address) => {
+    const metadata = await db.getMintExtraMetadata(mintType);
+    if(metadata == null || metadata == undefined || metadata.request == undefined) {
+        return null;
     }
-};
+    // TODO: key of different mint type
+    const key_string = metadata.keyName;
+    var api_key = process.env[key_string];
+    if(api_key == undefined) {
+        api_key = metadata.keyValue;
+    }
 
-export const balanceOf = async (mintType, babtAddress) => {
-    const endpoint = config.endpoint[config.chains[mintType]];
-    // console.log("mintType:" + mintType + ",chains:" + config.chains[mintType] + ",endpoint:" + endpoint);
-    return await ethCall(endpoint, config.contracts[mintType], 'balanceOf(address)', [babtAddress]);
-};
+    const jsonRequest = JSON.stringify(metadata.request);
+    const request = jsonRequest.replace("$KEY$", api_key).replace("$ADDRESS$", address);
+    const json_para = JSON.parse(request);
+    
+    const endpoint = metadata.httpUrl;
+    const httpType = metadata.httpType;
+    // console.log("request " + request + "to:" + endpoint + "," + mintType + ",address:" + address);
 
-export const tokenIdOf = async (mintType, babtAddress) => {
-    const endpoint = config.endpoint[config.chains[mintType]];
-    return await ethCall(endpoint, config.contracts[mintType], config.tokenCallName[mintType], [babtAddress]);
+    const json = await axios({
+        method: httpType,
+        url: endpoint,
+        data: json_para
+    });
+    return json.data;
 };

@@ -4,6 +4,7 @@ import * as util from './util.js';
 import * as db from './db.js';
 import * as action from './action.js';
 import * as short from './shortlist.js';
+import * as adminOps from './admin.js';
 
 export const drip = async (event) => {
   const babtAddress = event.pathParameters.babtAddress.slice(-40);
@@ -81,6 +82,27 @@ export const dripped = async (event) => {
 export const shortlist = async (event) => {
   return await short.shortlist(event);
 }
+
+export const shortlistDb = async (event) => {
+  return await adminOps.shortlistDb(event);
+}
+
+export const shortlistChain = async (event) => {
+  return await adminOps.shortlistChain(event);
+}
+
+export const setMetadata = async (event) => {
+  return await adminOps.setMintMetadata(event);
+}
+
+export const getMetadata = async (event) => {
+  return await adminOps.getMintMetadata(event);
+}
+
+export const getTokenInfo = async (event) => {
+  return await adminOps.getTokenInfo(event);
+}
+
 
 // export const babtAccountDiscovery = async() => {
 //   const stopwatch = { start: performance.now() };

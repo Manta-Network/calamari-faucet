@@ -64,7 +64,7 @@ export const getTokenInfo = async(event) => {
         const is_whitelist = mintMetadata.is_whitelist;
         const is_customize = mintMetadata.is_customize;
         
-        let hasBalance = null;
+        let hasBalance = false;
         let callToken = null;
         let callBalance = null;
         let dbToken = null;
@@ -90,12 +90,20 @@ export const getTokenInfo = async(event) => {
             callBalance = call_result.result;
             const call_result2 = await util.ethCall(endpoint, contract, tokenCallName, [address]);
             callToken = call_result2.result;
+
+            if (callBalance != null && callBalance !== "0x0000000000000000000000000000000000000000000000000000000000000000") {
+                hasBalance = true;
+            }
         }
         if(is_customize) {
             const response = await util.customizeCall(token_type, address);
             if(response != null) {
                 callBalance = response["data"]["has_sbt"];
                 callToken = response["data"]["token_id"];
+
+                if(callBalance == 1) {
+                    hasBalance = true;
+                }
             }
         }
 

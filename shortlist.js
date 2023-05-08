@@ -69,7 +69,7 @@ export const shortlist = async (event) => {
 
     // Not in db if is whitelist case, then user don't allow to mint.
     if (is_whitelist) {
-        status = "allow-fail";
+        status = 'zero-balance-observed';
         return util.response_data({status,token});
     } 
 

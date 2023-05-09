@@ -71,7 +71,9 @@ export const getTokenInfo = async(event) => {
         const hasDB = await db.hasPriorAllowlist(token_type, address);
         const dbRecord = await db.getOnePriorAllowlist(token_type, address);
         if(dbRecord.length > 0) {
-            dbToken = dbRecord[0]["allowlist"][0]["token_id"];
+            if(dbRecord[0]["allowlist"] != undefined) {
+                dbToken = dbRecord[0]["allowlist"][0]["token_id"];
+            }
         }
             
         const endpoint = config.get_endpoint();

@@ -68,10 +68,13 @@ export const getTokenInfo = async(event) => {
         let callToken = null;
         let callBalance = null;
         let dbToken = null;
-        const hasDB = await db.hasPriorAllowlist(token_type, address);
+        const hasDbToken = await db.hasPriorAllowlist(token_type, address);
         const dbRecord = await db.getOnePriorAllowlist(token_type, address);
         if(dbRecord.length > 0) {
-            dbToken = dbRecord[0]["allowlist"][0]["token_id"];
+            // in whitelist case, when use mongoimport, we don't set allowlist, so `allowlist` field is empty.
+            if(dbRecord[0]["allowlist"] != undefined) {
+                dbToken = dbRecord[0]["allowlist"][0]["token_id"];
+            }
         }
             
         const endpoint = config.get_endpoint();
@@ -113,7 +116,7 @@ export const getTokenInfo = async(event) => {
             is_contract,
             is_whitelist,
             is_customize,
-            hasDB,
+            hasDbToken,
             dbToken,
             hasBalance,
             callBalance,

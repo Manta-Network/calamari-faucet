@@ -5,6 +5,8 @@ import * as db from "./db.js";
 import * as util from "./util.js";
 import * as action from "./action.js";
 
+var api;
+
 export const shortlist = async (event) => {
     const payload = JSON.parse(event.body);
     const ethAddress = payload.shortlist.toLowerCase(); // only one address
@@ -123,10 +125,15 @@ export const shortlist = async (event) => {
 export const onchainAction = async(event, mintType, mintId, ethAddress, tokenId) => {
     let status = "";
     const identity = (!!event.requestContext) ? event.requestContext.identity : undefined;
-    const endpoint = config.get_endpoint();
-    const provider = new WsProvider(endpoint);
-    const api = await ApiPromise.create({ provider, noInitWarn: true });
-    await Promise.all([ api.isReady, cryptoWaitReady() ]);
+
+    // const endpoint = config.get_endpoint();
+    // const provider = new WsProvider(endpoint);
+    // const api = await ApiPromise.create({ provider, noInitWarn: true });
+    // await Promise.all([ api.isReady, cryptoWaitReady() ]);
+    // console.log("connected api.")
+
+    const api = await global_api();
+    console.log(new Date() + " connected api..")
 
     const tx_flag = await action.allowlistNow(api, mintType, mintId, ethAddress, tokenId, identity);
     if (tx_flag === true) {
@@ -135,4 +142,18 @@ export const onchainAction = async(event, mintType, mintId, ethAddress, tokenId)
         status = 'allow-fail';
     }
     return status;
+}
+
+export const global_api = async() => {
+  if(api != undefined) {
+    return api;
+  }
+  const endpoint = config.get_endpoint();
+  const provider = new WsProvider(endpoint);
+  api = await ApiPromise.create({ provider, noInitWarn: true });
+  await Promise.all([ api.isReady, cryptoWaitReady() ]);
+
+  console.log(new Date() + " connected a new api.")
+
+  return api;
 }

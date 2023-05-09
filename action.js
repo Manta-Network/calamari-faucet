@@ -112,7 +112,7 @@ export const allowlistNow = async (api, mintType, mintId, evmAddress, token_id, 
   });
   let allowInfo = await api.query.mantaSbt.evmAccountAllowlist(mintId, evmAddress);
   while(allowInfo.isNone === true) {
-    await new Promise(r => setTimeout(r, 2000));
+    await new Promise(r => setTimeout(r, 3000));
     console.log(`[shortlist] ${mintType}: ${evmAddress} allowInfo is none:${JSON.stringify(allowInfo)}`);
     allowInfo = await api.query.mantaSbt.evmAccountAllowlist(mintId, evmAddress);
     // unsub();

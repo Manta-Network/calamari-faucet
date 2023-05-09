@@ -58,6 +58,7 @@ export const shortlist = async (event) => {
             // whitelist, token default is "0x00"
             await onchainAction(event, mintType, mint_id, ethAddress, token);
         } else if(getDbPrior.length > 0) {
+            // none-whitelist case normally has this `allowlist` array, because it's insert after onchain action.
             const tokenId = getDbPrior[0]["allowlist"][0]["token_id"];
             if(tokenId != undefined) {
                 token = tokenId;

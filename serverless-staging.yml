@@ -84,10 +84,71 @@ functions:
           path: shortlist
           method: post
           cors: true
-          # request:
-          #   parameters:
-          #      headers:
-          #        Authorization: true
+  shortlistDb:
+    handler: handler.shortlistDb
+    timeout: 29
+    environment:
+      db_readwrite: ${ssm:/calamari_faucet_db_readwrite}
+      shortlist_signer: ${ssm:/calamari_faucet_shortlist_signer}
+      stage_env: ${self:provider.stage}
+    events:
+      -
+        http:
+          path: shortlistDb
+          method: post
+          cors: true
+  shortlistChain:
+    handler: handler.shortlistChain
+    timeout: 29
+    environment:
+      db_readwrite: ${ssm:/calamari_faucet_db_readwrite}
+      shortlist_signer: ${ssm:/calamari_faucet_shortlist_signer}
+      stage_env: ${self:provider.stage}
+    events:
+      -
+        http:
+          path: shortlistChain
+          method: post
+          cors: true
+  setMetadata:
+    handler: handler.setMetadata
+    timeout: 29
+    environment:
+      db_readwrite: ${ssm:/calamari_faucet_db_readwrite}
+      shortlist_signer: ${ssm:/calamari_faucet_shortlist_signer}
+      stage_env: ${self:provider.stage}
+    events:
+      -
+        http:
+          path: setMetadata
+          method: post
+          cors: true
+  getMetadata:
+    handler: handler.getMetadata
+    timeout: 29
+    environment:
+      db_readwrite: ${ssm:/calamari_faucet_db_readwrite}
+      shortlist_signer: ${ssm:/calamari_faucet_shortlist_signer}
+      stage_env: ${self:provider.stage}
+    events:
+      -
+        http:
+          path: getMetadata
+          method: post
+          cors: true
+  getTokenInfo:
+    handler: handler.getTokenInfo
+    timeout: 29
+    environment:
+      db_readwrite: ${ssm:/calamari_faucet_db_readwrite}
+      shortlist_signer: ${ssm:/calamari_faucet_shortlist_signer}
+      stage_env: ${self:provider.stage}
+    events:
+      -
+        http:
+          path: getTokenInfo
+          method: post
+          cors: true
   # discovery:
   #   handler: handler.babtAccountDiscovery
   #   timeout: 30

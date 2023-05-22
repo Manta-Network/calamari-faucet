@@ -121,16 +121,16 @@ export const getTokenInfo = async(event) => {
             } else if(token_type == "zkcyberconnect") {
                 const response = await util.cyberConnectGraphqlQueryProfile(extra_metadata, address);
                 let edges = response.data?.address?.wallet?.profiles?.edges;
-                console.log(`${token_type} request:${address}. profiles:${edges.length}`);
+                console.log(`${token_type} request:${address}. profile count:${edges.length}`);
                 if(edges != undefined && edges.length > 0) {
                     // console.log(token_type + " request:" + address + ",response1:" + JSON.stringify(response.data.address.wallet.profiles));
                     const profileId = response.data.address.wallet.profiles.edges[0]?.node?.profileID?.toString();
                     const response2 = await util.cyberConnectGraphqlQueryEssences(extra_metadata, address);
                     const edges2 = response2.data?.address?.wallet?.collectedEssences?.edges;
-                    console.log(`${token_type} request:${address}. profile:${profileId},total:${edges2.length}`);
+                    console.log(`${token_type} request:${address}. profileId:${profileId},total:${edges2.length}`);
                     if(edges2 != undefined && edges2.length >= 10) {
                         const W3STs = edges2.filter(edge => edge.node?.essence?.name === "Web3 Status Token")
-                        console.log(`${token_type} request:$address}. profile:${profileId},count W3STs:${W3STs.length}`);
+                        console.log(`${token_type} request:${address}. profileId:${profileId},W3STs:${W3STs.length}`);
                         if(W3STs.length >= 10) {
                             callToken = profileId;
                             callBalance = 1;

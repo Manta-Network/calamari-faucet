@@ -111,10 +111,10 @@ export const shortlist = async (event) => {
                 const response2 = await util.cyberConnectGraphqlQueryEssences(extra_meta, ethAddress);
                 const edges2 = response2.data?.address?.wallet?.collectedEssences?.edges;
                 // We have condition that only 10+ W3STs name must be qualified.
-                console.log(`${token_type} request:${address}. profile:${profileId},total:${edges2.length}`);
+                console.log(`${token_type} request:${address}. profileId:${profileId},total:${edges2.length}`);
                 if(edges2 != undefined && edges2.length >= 10) {
                     const W3STs = edges2.filter(edge => edge.node?.essence?.name === "Web3 Status Token")
-                    console.log(`${token_type} request:${address}. profile:${profileId},count W3STs:${W3STs.length}`);
+                    console.log(`${token_type} request:${address}. profileId:${profileId},W3STs:${W3STs.length}`);
                     if(W3STs.length >= 10) {
                         addressHasBalance = true;
                         token = profileId.toString();

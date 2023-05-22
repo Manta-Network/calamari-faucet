@@ -54,7 +54,14 @@ export const getTokenInfo = async(event) => {
         return util.response_data({msg: "key not right!"});
     }
 
-    const tokens = ["BAB", "zkgalxe", "zkreadon", "zkarbairdrop"];
+    let mintType = payload.token_type;
+    let tokens = [];
+    if(mintType) {
+        tokens = [mintType];
+    } else {
+        tokens = ["BAB", "zkgalxe", "zkreadon", "zkarbairdrop", "zkcyberconnect"];
+    }
+
     const results = [];
     for(var i=0;i<tokens.length;i++) {
         const token_type = tokens[i];
@@ -63,6 +70,7 @@ export const getTokenInfo = async(event) => {
         const is_contract = mintMetadata.is_contract;
         const is_whitelist = mintMetadata.is_whitelist;
         const is_customize = mintMetadata.is_customize;
+        const extra_metadata = mintMetadata.metadata;
         
         let hasBalance = false;
         let callToken = null;
@@ -99,15 +107,48 @@ export const getTokenInfo = async(event) => {
             }
         }
         if(is_customize) {
-            const response = await util.customizeCall(token_type, address);
-            if(response != null) {
-                callBalance = response["data"]["has_sbt"];
-                callToken = response["data"]["token_id"];
-
-                if(callBalance == 1) {
-                    hasBalance = true;
+            if(token_type == "zkreadon") {
+                const response = await util.customizeCall(extra_metadata, token_type, address);
+                console.log(token_type + " request:" + address + ",response:" + JSON.stringify(response.data));
+                if(response != null) {
+                    callBalance = response["data"]["has_sbt"];
+                    callToken = response["data"]["token_id"];
+    
+                    if(callBalance == 1) {
+                        hasBalance = true;
+                    }
+                }
+            } else if(token_type == "zkcyberconnect") {
+                const response = await util.cyberConnectGraphqlQueryProfile(extra_metadata, address);
+                let edges = response.data?.address?.wallet?.profiles?.edges;
+                if(edges != undefined && edges.length > 0) {
+                    // console.log(token_type + " request:" + address + ",response1:" + JSON.stringify(response.data.address.wallet.profiles));
+                    const profileID = response.data.address.wallet.profiles.edges[0]?.node?.profileID?.toString();
+                    const response2 = await util.cyberConnectGraphqlQueryEssences(extra_metadata, address);
+                    const edges2 = response2.data?.address?.wallet?.collectedEssences?.edges;
+                    if(edges2 != undefined && edges2.length >= 10) {
+                        const W3STs = edges2.filter(edge => edge.node?.essence?.name === "Web3 Status Token")
+                        console.log(`${token_type} request:$address}. profile:${profileID},count W3STs:${W3STs.length}`);
+                        if(W3STs.length >= 10) {
+                            callToken = profileID;
+                            callBalance = 1;
+                            hasBalance = true;
+                        }
+                    }
+                }
+            } else if(token_type == "zkultiverse") {
+                // ultiverse: https://assets-api.ultiverse.io/api/v1/holder/state?address=0xef1168293649dc1a31f264f5ba7f88b8c0894db4
+                // {"isMoonlightHolder":false,"isMetaMergeHolder":false,"isEsHolder":true}
+                const response = await util.customizGetCall(extra_metadata, token_type, address);
+                console.log(token_type + " request:" + address + ",response:" + JSON.stringify(response));
+                if(response != null) {
+                    if(response.isMoonlightHolder || response.isMetaMergeHolder || response.isEsHolder) {
+                        callBalance = 1;
+                        hasBalance = true;
+                    }
                 }
             }
+
         }
 
         results.push({

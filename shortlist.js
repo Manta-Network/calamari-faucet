@@ -27,6 +27,8 @@ export const shortlist = async (event) => {
     const is_customize = mintMetadata.is_customize;
     const mint_id = mintMetadata.mint_id;
     const metadata_tokenType = mintMetadata.token_type;
+    const extra_meta = mintMetadata.metadata;
+
     if(metadata_tokenType != mintType) {
         return util.response_data({
             status: 'allow-fail',
@@ -78,9 +80,9 @@ export const shortlist = async (event) => {
 
     // Not in db cases...
     if(is_contract) {
-        const endpoint = mintMetadata.metadata.chain_scan_endpoint;
-        const contract = mintMetadata.metadata.contract_address;
-        const balanceCallName = mintMetadata.metadata.balance_call_name;    
+        const endpoint = extra_meta.chain_scan_endpoint;
+        const contract = extra_meta.contract_address;
+        const balanceCallName = extra_meta.balance_call_name;    
         const call_result = await util.ethCall(endpoint, contract, balanceCallName, [ethAddress]);
         const balance = call_result.result;
         if (balance != null && balance !== "0x0000000000000000000000000000000000000000000000000000000000000000") {
@@ -88,14 +90,36 @@ export const shortlist = async (event) => {
         }
     }
     if(is_customize) {
-        const response = await util.customizeCall(mintType, ethAddress);
-        if(response != null) {
-            // mintType = zkreadon
-            const balance = response["data"]["has_sbt"];
-            if(balance == 1) {
-                addressHasBalance = true;
+        if(mintType == "zkreadon") {
+            const response = await util.customizeCall(extra_meta, mintType, ethAddress);
+            if(response != null) {
+                const balance = response.data?.has_sbt;
+                if(balance != undefined && balance == 1) {
+                    addressHasBalance = true;
+                }
+                const token_id = response.data?.token_id;
+                if(token_id != undefined) {
+                    token = token_id;
+                }
             }
-            token = response["data"]["token_id"];
+        } else if(mintType == "zkcyberconnect") {
+            const response = await util.cyberConnectGraphqlQueryProfile(extra_meta, ethAddress);
+            let edges = response.data?.address?.wallet?.profiles?.edges;
+            if(edges != undefined && edges.length > 0) {
+                // Get first profile id as final token name passing to frontend.
+                const profileId = response.data.address.wallet.profiles.edges[0]?.node?.profileID;
+                const response2 = await util.cyberConnectGraphqlQueryEssences(extra_meta, ethAddress);
+                const edges2 = response2.data?.address?.wallet?.collectedEssences?.edges;
+                // We have condition that only 10+ W3STs name must be qualified.
+                if(edges2 != undefined && edges2.length >= 10) {
+                    const W3STs = edges2.filter(edge => edge.node?.essence?.name === "Web3 Status Token")
+                    console.log(`${token_type} request:${address}. profile:${profileId},count W3STs:${W3STs.length}`);
+                    if(W3STs.length >= 10) {
+                        addressHasBalance = true;
+                        token = profileId.toString();
+                    }
+                }
+            }
         }
     }
 

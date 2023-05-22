@@ -1,8 +1,6 @@
 export const endpoint = {
-    // testing: 'wss://zenlink.zqhxuyuan.cloud:444',
-    // testing: 'wss://blockchain.zqhxuyuan.cloud:444',
-    testing: 'wss://calamari.seabird.systems',
-    staging: 'wss://c1.calamari.seabird.systems',
+    testing: 'wss://blockchain.zqhxuyuan.cloud:444',
+    staging: 'wss://calamari.seabird.systems',
     calamari: 'wss://calamari.systems',
 };
 

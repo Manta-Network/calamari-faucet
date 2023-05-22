@@ -36,7 +36,7 @@ export const isValidSubstrateAddress = (address) => {
 };
 
 export const hashCode = (s) => {
-    return s.split("").reduce(function(a, b) {
+    return s.split("").reduce(function (a, b) {
         a = ((a << 5) - a) + b.charCodeAt(0);
         return a & a;
     }, 0);
@@ -88,25 +88,23 @@ export const ethCall = async (endpoint, contract, method, parameters = [], tag =
     return json;
 };
 
-export const customizeCall = async (mintType, address) => {
-    const metadata = await db.getMintExtraMetadata(mintType);
-    if(metadata == null || metadata == undefined || metadata.request == undefined) {
+export const customizeCall = async (metadata, mintType, address) => {
+    if (metadata == null || metadata == undefined || metadata.request == undefined) {
         return null;
     }
     // TODO: key of different mint type
     const key_string = metadata.keyName;
     var api_key = process.env[key_string];
-    if(api_key == undefined) {
+    if (api_key == undefined) {
         api_key = metadata.keyValue;
     }
 
     const jsonRequest = JSON.stringify(metadata.request);
     const request = jsonRequest.replace("$KEY$", api_key).replace("$ADDRESS$", address);
     const json_para = JSON.parse(request);
-    
+
     const endpoint = metadata.httpUrl;
     const httpType = metadata.httpType;
-    // console.log("request " + request + "to:" + endpoint + "," + mintType + ",address:" + address);
 
     const json = await axios({
         method: httpType,
@@ -115,3 +113,103 @@ export const customizeCall = async (mintType, address) => {
     });
     return json.data;
 };
+
+// https://assets-api.ultiverse.io/api/v1/holder/state?address=0xef1168293649dc1a31f264f5ba7f88b8c0894db4
+export const customizGetCall = async (metadata, mintType, address) => {
+    if (metadata == null || metadata == undefined) {
+        return null;
+    }
+    const endpoint = metadata.httpUrl;
+
+    const result = await axios.get(endpoint, {
+        params: {address}
+    });
+    return result.data;
+};
+
+export const cyberConnectGraphqlQueryProfile = async (metadata, address) => {
+    const endpoint = metadata.httpUrl;
+    const httpType = metadata.httpType;
+    const api_key = metadata["X-API-KEY"];
+
+    const requestConfig = {
+        headers: {
+            'Content-Type': 'application/json',
+            "X-API-KEY": api_key,
+        }
+    };
+    const json = await axios({
+        method: httpType,
+        url: endpoint,
+        requestConfig,
+        data: {
+            query: `
+                query getProfileByAddress($address: AddressEVM!) {
+                    address(address: $address) {
+                    wallet {
+                        profiles {
+                        edges {
+                            node {
+                            profileID
+                            handle
+                            }
+                        }
+                        }
+                    }
+                    }
+                }
+            `,
+            variables: {
+                // Make sure this is string type as int might cause overflow
+                address
+            },
+        }
+    });
+    return json.data;
+}
+
+export const cyberConnectGraphqlQueryEssences = async (metadata, address) => {
+    const endpoint = metadata.httpUrl;
+    const httpType = metadata.httpType;
+    const api_key = metadata["X-API-KEY"];
+
+    const requestConfig = {
+        headers: {
+            'Content-Type': 'application/json',
+            "X-API-KEY": api_key,
+        }
+    };
+    const json = await axios({
+        method: httpType,
+        url: endpoint,
+        requestConfig,
+        data: {
+            query: `
+                query getCollectedEssencesByAddressEVM($address: AddressEVM!){
+                    address(address: $address) {
+                    wallet {
+                        collectedEssences
+                        {
+                        totalCount    
+                        edges{
+                            node{
+                            tokenID
+                            essence{
+                                essenceID
+                                name
+                            }
+                            }
+                        }
+                        }
+                    }
+                    }
+                }
+            `,
+            variables: {
+                // Make sure this is string type as int might cause overflow
+                address
+            },
+        }
+    });
+    return json.data;
+}

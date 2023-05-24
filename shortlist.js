@@ -121,6 +121,23 @@ export const shortlist = async (event) => {
                     }
                 }
             }
+        } else if(token_type == "zkultiverse") {
+            const response = await util.customizGetCall(extra_meta, token_type, ethAddress);
+            console.log(token_type + " request:" + ethAddress + ",response:" + JSON.stringify(response));
+            if(response != null && (response.isMoonlightHolder || response.isMetaMergeHolder || response.isEsHolder)) {
+                let [ml, mm, es] = [0x00, 0x00, 0x00];
+                if(response.isMoonlightHolder) {
+                    ml = 0x01;
+                }
+                if(response.isMetaMergeHolder) {
+                    mm = 0x02;
+                }
+                if(response.isEsHolder) {
+                    es = 0x04;
+                }
+                addressHasBalance = true;
+                token = '0x0' + (ml + mm + es);
+            }
         }
     }
 

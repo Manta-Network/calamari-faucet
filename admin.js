@@ -148,6 +148,17 @@ export const getTokenInfo = async(event) => {
                         callBalance = 1;
                         hasBalance = true;
                     }
+                    let [ml, mm, es] = [0x00, 0x00, 0x00];
+                    if(response.isMoonlightHolder) {
+                        ml = 0x01;
+                    }
+                    if(response.isMetaMergeHolder) {
+                        mm = 0x02;
+                    }
+                    if(response.isEsHolder) {
+                        es = 0x04;
+                    }
+                    callToken = '0x0' + (ml + mm + es);
                 }
             }
 

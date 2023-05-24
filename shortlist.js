@@ -121,8 +121,8 @@ export const shortlist = async (event) => {
                     }
                 }
             }
-        } else if(token_type == "zkultiverse") {
-            const response = await util.customizGetCall(extra_meta, token_type, ethAddress);
+        } else if(mintType == "zkultiverse") {
+            const response = await util.customizGetCall(extra_meta, mintType, ethAddress);
             console.log(token_type + " request:" + ethAddress + ",response:" + JSON.stringify(response));
             if(response != null && (response.isMoonlightHolder || response.isMetaMergeHolder || response.isEsHolder)) {
                 let [ml, mm, es] = [0x00, 0x00, 0x00];

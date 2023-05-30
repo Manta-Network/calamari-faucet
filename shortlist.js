@@ -189,11 +189,16 @@ export const onchainAction = async(event, mintType, mintId, ethAddress, tokenId)
     const api = await global_api();
     console.log(new Date() + " connected api..")
 
-    const tx_flag = await action.allowlistNow(api, mintType, mintId, ethAddress, tokenId, identity);
-    if (tx_flag === true) {
-        status = 'allow-success';
-    } else {
-        status = 'allow-fail';
+    try {
+        const tx_flag = await action.allowlistNow(api, mintType, mintId, ethAddress, tokenId, identity);
+        if (tx_flag === true) {
+            status = 'allow-success';
+        } else {
+            status = 'allow-fail';
+        }
+    } catch(error) {
+        api = undefined;
+        await global_api();
     }
     return status;
 }

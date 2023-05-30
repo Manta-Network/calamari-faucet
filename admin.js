@@ -237,13 +237,13 @@ export const shortlistDb = async (event) => {
         return util.response_data({msg: "key not right!"});
     }
 
-    const mintType = payload.token_type;
+    const mintType = payload.token_type.toLowerCase();
     const mintMetadata = await db.getMintMetadata(mintType);
     console.log(`mint type:${mintType}: ${JSON.stringify(mintMetadata)}`);
     if(mintMetadata == null) {
         return util.response_data({msg: `Mint ${mintType} not set.`});
     }
-    if (mintMetadata.metadata.is_whitelist == false) {
+    if (mintMetadata.metadata.is_whitelist == false && mintType != "zktaskon") {
         return util.response_data({msg: `Mint ${mintType} is not allowed.`});
     }
 

@@ -58,7 +58,7 @@ export const shortlist = async (event) => {
         // The whitelist process is first insert user's address into database
         // but not insert into on-chain storage. so in this case, only user request
         // this api, then the address will be insert into on-chain storage.
-        if (is_whitelist) {
+        if (is_whitelist || mintType == "zktaskon") {
             // whitelist, token default is "0x00"
             await onchainAction(event, mintType, mint_id, ethAddress, token);
         } else if(getDbPrior.length > 0) {
@@ -85,7 +85,7 @@ export const shortlist = async (event) => {
         const balanceCallName = extra_meta.balance_call_name;    
         const call_result = await util.ethCall(endpoint, contract, balanceCallName, [ethAddress]);
         const balance = call_result.result;
-        if (balance != null && balance !== "0x0000000000000000000000000000000000000000000000000000000000000000") {
+        if (balance != null && balance !== config.contract_zero_balance) {
             addressHasBalance = true;
         }
     }
@@ -137,6 +137,18 @@ export const shortlist = async (event) => {
                 }
                 addressHasBalance = true;
                 token = '0x0' + (ml + mm + es);
+            }
+        } else if(mintType == "zktaskon") {
+            const call_result = await util.ethCall(extra_meta.chain_scan_endpoint, extra_meta.contract_address, extra_meta.balance_call_name, [ethAddress]);
+            const balance = call_result.result;
+            if (balance != null && balance !== config.contract_zero_balance) {
+                addressHasBalance = true;
+            } else {
+                const call_result2 = await util.ethCall(extra_meta.chain_scan_endpoint2, extra_meta.contract_address2, extra_meta.balance_call_name2, [ethAddress]);
+                const balance2 = call_result2.result;
+                if (balance2 != null && balance2 !== config.contract_zero_balance) {
+                    addressHasBalance = true;
+                }    
             }
         }
     }
@@ -195,7 +207,7 @@ export const global_api = async() => {
   api = await ApiPromise.create({ provider, noInitWarn: true });
   await Promise.all([ api.isReady, cryptoWaitReady() ]);
 
-  console.log(new Date() + " connected a new api.")
+  console.log(new Date() + " connected a new api." + endpoint)
 
   return api;
 }

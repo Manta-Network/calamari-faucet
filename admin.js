@@ -102,7 +102,7 @@ export const getTokenInfo = async(event) => {
             const call_result2 = await util.ethCall(endpoint, contract, tokenCallName, [address]);
             callToken = call_result2.result;
 
-            if (callBalance != null && callBalance !== "0x0000000000000000000000000000000000000000000000000000000000000000") {
+            if (callBalance != null && callBalance !== config.contract_zero_balance) {
                 hasBalance = true;
             }
         }
@@ -159,6 +159,21 @@ export const getTokenInfo = async(event) => {
                         es = 0x04;
                     }
                     callToken = '0x0' + (ml + mm + es);
+                }
+            } else if(token_type == "zktaskon") {
+                // BSC: 0x7bdda2d09e12f41ff1a498a18d4237a386a56177: https://bscscan.com/token/0x565a41a7d7019aa2b7b3480e1195075f244b27f8
+                // Polygon: 0xa280ab0381d31fc13c7af4b477c6d28a031406a7: https://polygonscan.com/token/0x9c19c0393bd67a98c89088207112c1d7ca28fa95
+                const call_result = await util.ethCall(extra_metadata.chain_scan_endpoint, extra_metadata.contract_address, extra_metadata.balance_call_name, [address]);
+                const call_result2 = await util.ethCall(extra_metadata.chain_scan_endpoint2, extra_metadata.contract_address2, extra_metadata.balance_call_name2, [address]);
+                console.log("call1:" + JSON.stringify(call_result));
+                console.log("call2:" + JSON.stringify(call_result2));
+                const balance = call_result.result;
+                const balance2 = call_result2.result;
+                if (balance != null && balance !== config.contract_zero_balance) {
+                    hasBalance = true;
+                }
+                if (balance2 != null && balance2 !== config.contract_zero_balance) {
+                    hasBalance = true;
                 }
             }
 

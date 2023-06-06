@@ -67,6 +67,17 @@ export const shortlist = async (event) => {
             if(tokenId != undefined) {
                 token = tokenId;
             }
+            // const db_record = getDbPrior[0];
+            // const allowlist = db_record["allowlist"];
+            // if(allowlist != undefined && allowlist.length > 0) {
+            //     const allowlist1 = allowlist[0];
+            //     if(allowlist1 != undefined) {
+            //         const tokenId = allowlist1.token_id;
+            //         if(tokenId != undefined) {
+            //             token = tokenId;
+            //         }
+            //     }
+            // }
         }
         status = 'prior-allow-observed';
         return util.response_data({status,token});

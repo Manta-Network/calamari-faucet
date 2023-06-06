@@ -197,19 +197,25 @@ export const onchainAction = async(event, mintType, mintId, ethAddress, tokenId)
     // await Promise.all([ api.isReady, cryptoWaitReady() ]);
     // console.log("connected api.")
 
-    const api = await global_api();
+    let inner_api = await global_api();
     console.log(new Date() + " connected api..")
 
     try {
-        const tx_flag = await action.allowlistNow(api, mintType, mintId, ethAddress, tokenId, identity);
+        const tx_flag = await action.allowlistNow(inner_api, mintType, mintId, ethAddress, tokenId, identity);
         if (tx_flag === true) {
             status = 'allow-success';
         } else {
             status = 'allow-fail';
         }
     } catch(error) {
-        api = undefined;
-        await global_api();
+        console.log("onchain error:", error);
+        inner_api = await global_api();
+        const tx_flag = await action.allowlistNow(inner_api, mintType, mintId, ethAddress, tokenId, identity);
+        if (tx_flag === true) {
+            status = 'allow-success';
+        } else {
+            status = 'allow-fail';
+        }
     }
     return status;
 }

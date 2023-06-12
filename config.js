@@ -20,6 +20,7 @@ export const signer = {
 export const signer_address = "dmvSXhJWeJEKTZT8CCUieJDaNjNFC4ZFqfUm4Lx1z7J7oFzBf";
 
 export const contract_zero_balance = "0x0000000000000000000000000000000000000000000000000000000000000000";
+export const contract_zero_balance0 = "0";
 
 export const get_endpoint = () => {
     const env = process.env.stage_env;

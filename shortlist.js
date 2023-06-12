@@ -58,7 +58,7 @@ export const shortlist = async (event) => {
         // The whitelist process is first insert user's address into database
         // but not insert into on-chain storage. so in this case, only user request
         // this api, then the address will be insert into on-chain storage.
-        if (is_whitelist || mintType == "zktaskon") {
+        if (is_whitelist || mintType == "zktaskon" || mintType == "zkfrontier") {
             // whitelist, token default is "0x00"
             await onchainAction(event, mintType, mint_id, ethAddress, token);
         } else if(getDbPrior.length > 0) {
@@ -144,11 +144,23 @@ export const shortlist = async (event) => {
             if (balance != null && balance !== config.contract_zero_balance) {
                 addressHasBalance = true;
             } else {
-                const call_result2 = await util.ethCall(extra_meta.chain_scan_endpoint2, extra_meta.contract_address2, extra_meta.balance_call_name2, [ethAddress]);
-                const balance2 = call_result2.result;
-                if (balance2 != null && balance2 !== config.contract_zero_balance) {
+                const call_result = await util.ethCall(extra_meta.chain_scan_endpoint2, extra_meta.contract_address2, extra_meta.balance_call_name2, [ethAddress]);
+                const balance = call_result.result;
+                if (balance != null && balance !== config.contract_zero_balance) {
                     addressHasBalance = true;
                 }    
+            }
+        } else if(mintType == "zkfrontier") {
+            const contracts = [extra_meta.contract_address, extra_meta.contract_address1, extra_meta.contract_address2, extra_meta.contract_address3, extra_meta.contract_address4];
+            for(var i=0;i<contracts.length;i++) {
+                const contract = contracts[i];
+                const call_result = await util.ethCall(extra_meta.chain_scan_endpoint,contract, extra_meta.balance_call_name, [ethAddress]);
+                const balance = call_result.result;
+                console.log(`${mintType}: ${ethAddress} call: ${balance}`);
+                if (balance != null && balance !== config.contract_zero_balance && balance != config.contract_zero_balance0) {
+                    addressHasBalance = true;
+                    break;
+                }                
             }
         }
     }

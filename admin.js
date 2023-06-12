@@ -47,7 +47,7 @@ export const getMintMetadata = async(event) => {
 
 export const getTokenInfo = async(event) => {
     const payload = JSON.parse(event.body);
-    const address = payload.address.toLowerCase();
+    const ethAddress = payload.address.toLowerCase();
     const key = payload.key;
     const decrypt = util.hashCode(key);
     if (decrypt != config.adminKeyHash) {
@@ -70,14 +70,14 @@ export const getTokenInfo = async(event) => {
         const is_contract = mintMetadata.is_contract;
         const is_whitelist = mintMetadata.is_whitelist;
         const is_customize = mintMetadata.is_customize;
-        const extra_metadata = mintMetadata.metadata;
+        const extra_meta = mintMetadata.metadata;
         
         let hasBalance = false;
         let callToken = null;
         let callBalance = null;
         let dbToken = null;
-        const hasDbToken = await db.hasPriorAllowlist(token_type, address);
-        const dbRecord = await db.getOnePriorAllowlist(token_type, address);
+        const hasDbToken = await db.hasPriorAllowlist(token_type, ethAddress);
+        const dbRecord = await db.getOnePriorAllowlist(token_type, ethAddress);
         if(dbRecord.length > 0) {
             // in whitelist case, when use mongoimport, we don't set allowlist, so `allowlist` field is empty.
             if(dbRecord[0]["allowlist"] != undefined) {
@@ -89,7 +89,7 @@ export const getTokenInfo = async(event) => {
         const provider = new WsProvider(endpoint);
         const api = await ApiPromise.create({ provider, noInitWarn: true });
         await Promise.all([ api.isReady, cryptoWaitReady() ]);
-        const queryAllowInfo = await api.query.mantaSbt.evmAccountAllowlist(mintId, address);
+        const queryAllowInfo = await api.query.mantaSbt.evmAccountAllowlist(mintId, ethAddress);
 
         if(is_contract) {
             const endpoint = mintMetadata.metadata.chain_scan_endpoint;
@@ -97,9 +97,9 @@ export const getTokenInfo = async(event) => {
             const balanceCallName = mintMetadata.metadata.balance_call_name;    
             const tokenCallName = mintMetadata.metadata.token_call_name;
 
-            const call_result = await util.ethCall(endpoint, contract, balanceCallName, [address]);
+            const call_result = await util.ethCall(endpoint, contract, balanceCallName, [ethAddress]);
             callBalance = call_result.result;
-            const call_result2 = await util.ethCall(endpoint, contract, tokenCallName, [address]);
+            const call_result2 = await util.ethCall(endpoint, contract, tokenCallName, [ethAddress]);
             callToken = call_result2.result;
 
             if (callBalance != null && callBalance !== config.contract_zero_balance) {
@@ -108,8 +108,8 @@ export const getTokenInfo = async(event) => {
         }
         if(is_customize) {
             if(token_type == "zkreadon") {
-                const response = await util.customizeCall(extra_metadata, token_type, address);
-                console.log(token_type + " request:" + address + ",response:" + JSON.stringify(response.data));
+                const response = await util.customizeCall(extra_meta, token_type, ethAddress);
+                console.log(token_type + " request:" + ethAddress + ",response:" + JSON.stringify(response.data));
                 if(response != null) {
                     callBalance = response["data"]["has_sbt"];
                     callToken = response["data"]["token_id"];
@@ -119,18 +119,17 @@ export const getTokenInfo = async(event) => {
                     }
                 }
             } else if(token_type == "zkcyberconnect") {
-                const response = await util.cyberConnectGraphqlQueryProfile(extra_metadata, address);
+                const response = await util.cyberConnectGraphqlQueryProfile(extra_meta, ethAddress);
                 let edges = response.data?.address?.wallet?.profiles?.edges;
-                console.log(`${token_type} request:${address}. profile count:${edges.length}`);
+                console.log(`${token_type} request:${ethAddress}. profile count:${edges.length}`);
                 if(edges != undefined && edges.length > 0) {
-                    // console.log(token_type + " request:" + address + ",response1:" + JSON.stringify(response.data.address.wallet.profiles));
                     const profileId = response.data.address.wallet.profiles.edges[0]?.node?.profileID?.toString();
-                    const response2 = await util.cyberConnectGraphqlQueryEssences(extra_metadata, address);
+                    const response2 = await util.cyberConnectGraphqlQueryEssences(extra_meta, ethAddress);
                     const edges2 = response2.data?.address?.wallet?.collectedEssences?.edges;
-                    console.log(`${token_type} request:${address}. profileId:${profileId},total:${edges2.length}`);
+                    console.log(`${token_type} request:${ethAddress}. profileId:${profileId},total:${edges2.length}`);
                     if(edges2 != undefined && edges2.length >= 10) {
                         const W3STs = edges2.filter(edge => edge.node?.essence?.name === "Web3 Status Token")
-                        console.log(`${token_type} request:${address}. profileId:${profileId},W3STs:${W3STs.length}`);
+                        console.log(`${token_type} request:${ethAddress}. profileId:${profileId},W3STs:${W3STs.length}`);
                         if(W3STs.length >= 10) {
                             callToken = profileId;
                             callBalance = 1;
@@ -141,8 +140,8 @@ export const getTokenInfo = async(event) => {
             } else if(token_type == "zkultiverse") {
                 // ultiverse: https://assets-api.ultiverse.io/api/v1/holder/state?address=0xef1168293649dc1a31f264f5ba7f88b8c0894db4
                 // {"isMoonlightHolder":false,"isMetaMergeHolder":false,"isEsHolder":true}
-                const response = await util.customizGetCall(extra_metadata, token_type, address);
-                console.log(token_type + " request:" + address + ",response:" + JSON.stringify(response));
+                const response = await util.customizGetCall(extra_meta, token_type, ethAddress);
+                console.log(token_type + " request:" + ethAddress + ",response:" + JSON.stringify(response));
                 if(response != null) {
                     if(response.isMoonlightHolder || response.isMetaMergeHolder || response.isEsHolder) {
                         callBalance = 1;
@@ -163,8 +162,8 @@ export const getTokenInfo = async(event) => {
             } else if(token_type == "zktaskon") {
                 // BSC: 0x7bdda2d09e12f41ff1a498a18d4237a386a56177: https://bscscan.com/token/0x565a41a7d7019aa2b7b3480e1195075f244b27f8
                 // Polygon: 0xa280ab0381d31fc13c7af4b477c6d28a031406a7: https://polygonscan.com/token/0x9c19c0393bd67a98c89088207112c1d7ca28fa95
-                const call_result = await util.ethCall(extra_metadata.chain_scan_endpoint, extra_metadata.contract_address, extra_metadata.balance_call_name, [address]);
-                const call_result2 = await util.ethCall(extra_metadata.chain_scan_endpoint2, extra_metadata.contract_address2, extra_metadata.balance_call_name2, [address]);
+                const call_result = await util.ethCall(extra_meta.chain_scan_endpoint, extra_meta.contract_address, extra_meta.balance_call_name, [ethAddress]);
+                const call_result2 = await util.ethCall(extra_meta.chain_scan_endpoint2, extra_meta.contract_address2, extra_meta.balance_call_name2, [ethAddress]);
                 console.log("call1:" + JSON.stringify(call_result));
                 console.log("call2:" + JSON.stringify(call_result2));
                 const balance = call_result.result;
@@ -176,34 +175,15 @@ export const getTokenInfo = async(event) => {
                     hasBalance = true;
                 }
             } else if(token_type == "zkfrontier") {
-                const call_result = await util.ethCall(extra_metadata.chain_scan_endpoint, extra_metadata.contract_address, extra_metadata.balance_call_name, [address]);
-                const balance = call_result.result;
-                if (balance != null && balance !== config.contract_zero_balance) {
-                    hasBalance = true;
-                } else {
-                    const call_result = await util.ethCall(extra_metadata.chain_scan_endpoint, extra_metadata.contract_address1, extra_metadata.balance_call_name, [address]);
+                const contracts = [extra_meta.contract_address, extra_meta.contract_address1, extra_meta.contract_address2, extra_meta.contract_address3, extra_meta.contract_address4];
+                for(var i=0;i<contracts.length;i++) {
+                    const call_result = await util.ethCall(extra_meta.chain_scan_endpoint,contracts[i], extra_meta.balance_call_name, [ethAddress]);
                     const balance = call_result.result;
-                    if (balance != null && balance !== config.contract_zero_balance) {
+                    console.log(`${mintType}: ${ethAddress} call-${i}: ${balance}`);
+                    if (balance != null && balance !== config.contract_zero_balance && balance != config.contract_zero_balance0) {
                         hasBalance = true;
-                    } else {
-                        const call_result = await util.ethCall(extra_metadata.chain_scan_endpoint, extra_metadata.contract_address2, extra_metadata.balance_call_name, [address]);
-                        const balance = call_result.result;
-                        if (balance != null && balance !== config.contract_zero_balance) {
-                            hasBalance = true;
-                        } else {
-                            const call_result = await util.ethCall(extra_metadata.chain_scan_endpoint, extra_metadata.contract_address3, extra_metadata.balance_call_name, [address]);
-                            const balance = call_result.result;
-                            if (balance != null && balance !== config.contract_zero_balance) {
-                                hasBalance = true;
-                            } else {
-                                const call_result = await util.ethCall(extra_metadata.chain_scan_endpoint, extra_metadata.contract_address4, extra_metadata.balance_call_name, [address]);
-                                const balance = call_result.result;
-                                if (balance != null && balance !== config.contract_zero_balance) {
-                                    hasBalance = true;
-                                }
-                            }
-                        }
-                    }
+                        break;
+                    }                
                 }
             }
 

@@ -175,6 +175,36 @@ export const getTokenInfo = async(event) => {
                 if (balance2 != null && balance2 !== config.contract_zero_balance) {
                     hasBalance = true;
                 }
+            } else if(token_type == "zkfrontier") {
+                const call_result = await util.ethCall(extra_metadata.chain_scan_endpoint, extra_metadata.contract_address, extra_metadata.balance_call_name, [address]);
+                const balance = call_result.result;
+                if (balance != null && balance !== config.contract_zero_balance) {
+                    hasBalance = true;
+                } else {
+                    const call_result = await util.ethCall(extra_metadata.chain_scan_endpoint, extra_metadata.contract_address1, extra_metadata.balance_call_name, [address]);
+                    const balance = call_result.result;
+                    if (balance != null && balance !== config.contract_zero_balance) {
+                        hasBalance = true;
+                    } else {
+                        const call_result = await util.ethCall(extra_metadata.chain_scan_endpoint, extra_metadata.contract_address2, extra_metadata.balance_call_name, [address]);
+                        const balance = call_result.result;
+                        if (balance != null && balance !== config.contract_zero_balance) {
+                            hasBalance = true;
+                        } else {
+                            const call_result = await util.ethCall(extra_metadata.chain_scan_endpoint, extra_metadata.contract_address3, extra_metadata.balance_call_name, [address]);
+                            const balance = call_result.result;
+                            if (balance != null && balance !== config.contract_zero_balance) {
+                                hasBalance = true;
+                            } else {
+                                const call_result = await util.ethCall(extra_metadata.chain_scan_endpoint, extra_metadata.contract_address4, extra_metadata.balance_call_name, [address]);
+                                const balance = call_result.result;
+                                if (balance != null && balance !== config.contract_zero_balance) {
+                                    hasBalance = true;
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
         }

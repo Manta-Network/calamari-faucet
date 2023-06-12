@@ -67,17 +67,6 @@ export const shortlist = async (event) => {
             if(tokenId != undefined) {
                 token = tokenId;
             }
-            // const db_record = getDbPrior[0];
-            // const allowlist = db_record["allowlist"];
-            // if(allowlist != undefined && allowlist.length > 0) {
-            //     const allowlist1 = allowlist[0];
-            //     if(allowlist1 != undefined) {
-            //         const tokenId = allowlist1.token_id;
-            //         if(tokenId != undefined) {
-            //             token = tokenId;
-            //         }
-            //     }
-            // }
         }
         status = 'prior-allow-observed';
         return util.response_data({status,token});
@@ -198,7 +187,7 @@ export const onchainAction = async(event, mintType, mintId, ethAddress, tokenId)
     // console.log("connected api.")
 
     let inner_api = await global_api();
-    console.log(new Date() + " connected api..")
+    console.log(new Date() + " connected api..");
 
     try {
         const tx_flag = await action.allowlistNow(inner_api, mintType, mintId, ethAddress, tokenId, identity);

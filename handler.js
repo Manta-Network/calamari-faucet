@@ -103,6 +103,20 @@ export const getTokenInfo = async (event) => {
   return await adminOps.getTokenInfo(event);
 }
 
+export const initPartnerMetadata = async (event) => {
+  return await adminOps.initPartnerMetadata(event);
+}
+
+export const getPartnerMetadata = async (event) => {
+  return await adminOps.getPartnerMetadata(event);
+}
+
+export const refreshQuestToken = async() => {
+  const token_type = "zkfuturist";
+  const parter_data = await db.getPartnerMetadata(token_type);
+  // console.log(new Date() + " refreshing token..." + JSON.stringify(parter_data.metadata));
+  await adminOps.freshQuestToken(token_type, parter_data.metadata);
+}
 
 // export const babtAccountDiscovery = async() => {
 //   const stopwatch = { start: performance.now() };

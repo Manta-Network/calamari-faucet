@@ -4,6 +4,7 @@ import {cryptoWaitReady} from "@polkadot/util-crypto";
 import * as db from "./db.js";
 import * as util from "./util.js";
 import * as action from "./action.js";
+import axios from 'axios';
 
 var api;
 
@@ -66,6 +67,9 @@ export const shortlist = async (event) => {
             const tokenId = getDbPrior[0]["allowlist"][0]["token_id"];
             if(tokenId != undefined) {
                 token = tokenId;
+            }
+            if(tokenId == 0) {
+                token = "0x00";
             }
         }
         status = 'prior-allow-observed';
@@ -156,11 +160,33 @@ export const shortlist = async (event) => {
                 const contract = contracts[i];
                 const call_result = await util.ethCall(extra_meta.chain_scan_endpoint,contract, extra_meta.balance_call_name, [ethAddress]);
                 const balance = call_result.result;
-                console.log(`${mintType}: ${ethAddress} call: ${balance}`);
+                console.log(`${mintType}: ${ethAddress} call-${i}: ${balance}`);
                 if (balance != null && balance !== config.contract_zero_balance && balance != config.contract_zero_balance0) {
                     addressHasBalance = true;
                     break;
                 }                
+            }
+        }  else if(mintType == "zkfuturist") {
+            const data = await db.getPartnerMetadata(mintType);
+            const metadata = data.metadata;
+            const check_url = metadata.check_url;
+            const token = data.access;
+            const response = await axios.get(check_url, {
+                params: {
+                    address: ethAddress
+                },
+                headers: { 
+                    Authorization: `Bearer ${token}` 
+                }
+            });
+            // {"success":true,"result":{"is_holder":false}}
+            console.log(mintType + "," + ethAddress + ",response: " + JSON.stringify(response.data));
+            const resp = response.data;
+            if(resp && resp.success == true) {
+                const holder = resp.result?.is_holder;
+                if(holder) {
+                    addressHasBalance = holder;
+                }
             }
         }
     }

@@ -3,6 +3,7 @@ import {cryptoWaitReady} from "@polkadot/util-crypto";
 import * as db from "./db.js";
 import * as util from "./util.js";
 import * as config from "./config.js";
+import axios from 'axios';
 
 export const setMintMetadata = async(event) => {
     const payload = JSON.parse(event.body);
@@ -185,6 +186,28 @@ export const getTokenInfo = async(event) => {
                         break;
                     }                
                 }
+            } else if(token_type == "zkfuturist") {
+                const data = await db.getPartnerMetadata(token_type);
+                const metadata = data.metadata;
+                const check_url = metadata.check_url;
+                const token = data.access;
+                const response = await axios.get(check_url, {
+                    params: {
+                        address: ethAddress
+                    },
+                    headers: { 
+                        Authorization: `Bearer ${token}` 
+                    }
+                });
+                // {"success":true,"result":{"is_holder":false}}
+                console.log(token_type + "," + ethAddress + ",response: " + JSON.stringify(response.data));
+                const resp = response.data;
+                if(resp && resp.success == true) {
+                    const holder = resp.result?.is_holder;
+                    if(holder) {
+                        hasBalance = holder;
+                    }
+                }
             }
 
         }
@@ -247,7 +270,9 @@ export const shortlistDb = async (event) => {
         return util.response_data({msg: "key not right!"});
     }
 
-    const mintType = payload.token_type.toLowerCase();
+    const token_type = payload.token_type == undefined ? "BAB": payload.token_type;
+    const mintType = token_type === "zkBAB" || token_type === "BAB" ? "BAB" : token_type.toLowerCase();    
+    // const mintType = payload.token_type.toLowerCase();
     const mintMetadata = await db.getMintMetadata(mintType);
     console.log(`mint type:${mintType}: ${JSON.stringify(mintMetadata)}`);
     if(mintMetadata == null) {
@@ -281,3 +306,56 @@ export const shortlistDb = async (event) => {
     })
 
 };
+
+export const initPartnerMetadata = async(event) => {
+    const payload = JSON.parse(event.body);
+    const key = payload.key;
+    const decrypt = util.hashCode(key);
+    if (decrypt != config.adminKeyHash) {
+        return util.response_data({msg: "key not right!"});
+    }
+
+    const token_type = payload.token_type.toLowerCase();
+    const mint_id = payload.mint_id;
+    const metadata = payload.metadata;
+
+    await db.recordPartnerMetadata(token_type, mint_id, metadata);
+
+    return util.response_data({metadata});
+}
+
+export const getPartnerMetadata = async(event) => {
+    const payload = JSON.parse(event.body);
+    const key = payload.key == undefined ? "": payload.key;
+    const decrypt = util.hashCode(key);
+    if (decrypt != config.adminKeyHash) {
+        return util.response_data({msg: "key not right!"});
+    }
+
+    const metadatas = await db.getPartnerMetadata(payload.token_type.toLowerCase());
+    return util.response_data({metadatas});
+}
+
+export const freshQuestToken = async(token_type, metadata) => {
+    const username = metadata.username;
+    const password = metadata.password;
+    const queryTokenUrl = metadata.refresh_url;
+
+    try {
+        const json = await axios.post(queryTokenUrl, {
+            username,
+            password
+        });
+        // console.log("refresh:" + JSON.stringify(json.data));
+        // set new token into database
+        const response = json.data;
+        if(response && response.success == true) {
+            const accessToken = response.result?.access;
+            const refreshToken = response.result?.refresh;
+            await db.updatePartnerMetadata(token_type, accessToken, refreshToken);
+        }
+    } catch(error) {
+        console.log("update partner error:", error);
+    }
+
+}

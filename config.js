@@ -65,3 +65,14 @@ export const get_mintmeta_collection = () => {
         return "prod-mint-meta";
     }
 }
+
+export const get_partner_collection = () => {
+    const env = process.env.stage_env;
+    if(env === "staging") {
+        return "staging-partner-meta";
+    } else if(env === "testing") {
+        return "testing-partner-meta";
+    } else {
+        return "prod-partner-meta";
+    }
+}

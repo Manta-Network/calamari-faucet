@@ -138,3 +138,52 @@ export const recordAccount = async (account) => (
     }
   )
 );
+
+export const recordPartnerMetadata = async (token_type, mint_id, metadata) => {
+  const update = await client.db('calamari-faucet').collection(config.get_partner_collection()).updateOne(
+    {
+      token_type
+    },
+    { 
+      $set: {
+        mint_id,
+        metadata,
+        time: new Date()
+      }
+    },
+    {
+      upsert: true,
+    }
+  );
+  return (update.acknowledged && !!update.upsertedCount);
+};
+
+export const updatePartnerMetadata = async (token_type, access, refresh) => {
+  const update = await client.db('calamari-faucet').collection(config.get_partner_collection()).updateOne(
+    {
+      token_type
+    },
+    { 
+      $set: {
+        access,
+        refresh,
+        time: new Date()
+      }
+    },
+    {
+      upsert: true,
+    }
+  );
+  return (update.acknowledged && !!update.upsertedCount);
+};
+
+
+export const getPartnerMetadata = async (token_type) => {
+  const metadata = (await Promise.all([
+    client.db('calamari-faucet').collection(config.get_partner_collection()).findOne({ token_type }),
+  ])).filter((x) => (!!x));
+  if(metadata.length == 0) {
+    return null;
+  }
+  return metadata[0];
+};

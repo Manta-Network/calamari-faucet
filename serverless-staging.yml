@@ -149,6 +149,44 @@ functions:
           path: getTokenInfo
           method: post
           cors: true
+  initPartnerMetadata:
+    handler: handler.initPartnerMetadata
+    timeout: 29
+    environment:
+      db_readwrite: ${ssm:/calamari_faucet_db_readwrite}
+      shortlist_signer: ${ssm:/calamari_faucet_shortlist_signer}
+      stage_env: ${self:provider.stage}
+    events:
+      -
+        http:
+          path: initPartnerMetadata
+          method: post
+          cors: true
+  getPartnerMetadata:
+    handler: handler.getPartnerMetadata
+    timeout: 29
+    environment:
+      db_readwrite: ${ssm:/calamari_faucet_db_readwrite}
+      shortlist_signer: ${ssm:/calamari_faucet_shortlist_signer}
+      stage_env: ${self:provider.stage}
+    events:
+      -
+        http:
+          path: getPartnerMetadata
+          method: post
+          cors: true
+  # refreshQuestToken:
+  #   handler: handler.refreshQuestToken
+  #   timeout: 30
+  #   environment:
+  #     db_readwrite: ${ssm:/calamari_faucet_db_readwrite}
+  #     stage_env: ${self:provider.stage}
+  #   events:
+  #     -
+  #       schedule:
+  #         name: quest-token-refresh-prod
+  #         description: refresh quest token on prod
+  #         rate: rate(1 hour)
   # discovery:
   #   handler: handler.babtAccountDiscovery
   #   timeout: 30

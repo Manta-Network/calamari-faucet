@@ -184,8 +184,8 @@ functions:
     events:
       -
         schedule:
-          name: quest-token-refresh
-          description: refresh quest token
+          name: quest-token-refresh-prod
+          description: refresh quest token on prod
           rate: rate(1 hour)
   # discovery:
   #   handler: handler.babtAccountDiscovery

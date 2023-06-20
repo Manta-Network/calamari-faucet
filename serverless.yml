@@ -5,13 +5,13 @@ frameworkVersion: '3'
 provider:
   name: aws
   runtime: nodejs18.x
-  stage: prod
+  stage: staging
   profile: manta-service
   region: eu-central-1
   lambdaHashingVersion: 20201221
   iam:
     role:
-      name: calamari-faucet
+      name: calamari-faucet-staging
       # https://docs.aws.amazon.com/systems-manager/latest/userguide/sysman-paramstore-access.html
       statements:
         -
@@ -175,18 +175,18 @@ functions:
           path: getPartnerMetadata
           method: post
           cors: true
-  refreshQuestToken:
-    handler: handler.refreshQuestToken
-    timeout: 30
-    environment:
-      db_readwrite: ${ssm:/calamari_faucet_db_readwrite}
-      stage_env: ${self:provider.stage}
-    events:
-      -
-        schedule:
-          name: quest-token-refresh
-          description: refresh quest token
-          rate: rate(1 hour)
+  # refreshQuestToken:
+  #   handler: handler.refreshQuestToken
+  #   timeout: 30
+  #   environment:
+  #     db_readwrite: ${ssm:/calamari_faucet_db_readwrite}
+  #     stage_env: ${self:provider.stage}
+  #   events:
+  #     -
+  #       schedule:
+  #         name: quest-token-refresh-prod
+  #         description: refresh quest token on prod
+  #         rate: rate(1 hour)
   # discovery:
   #   handler: handler.babtAccountDiscovery
   #   timeout: 30

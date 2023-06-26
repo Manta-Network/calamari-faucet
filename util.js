@@ -172,44 +172,104 @@ export const cyberConnectGraphqlQueryEssences = async (metadata, address) => {
     const endpoint = metadata.httpUrl;
     const httpType = metadata.httpType;
     const api_key = metadata["X-API-KEY"];
+    const edges = await cyberConnectGraphqlQueryEssencesByCursor(endpoint, httpType, api_key, address);
+    return edges;
+}
 
+export const cyberConnectGraphqlQueryEssencesByCursor = async (endpoint, httpType, api_key, address, cursor = undefined, edges = []) => {
     const requestConfig = {
         headers: {
             'Content-Type': 'application/json',
             "X-API-KEY": api_key,
         }
     };
-    const json = await axios({
-        method: httpType,
-        url: endpoint,
-        requestConfig,
-        data: {
-            query: `
-                query getCollectedEssencesByAddressEVM($address: AddressEVM!){
-                    address(address: $address) {
-                    wallet {
-                        collectedEssences
-                        {
-                        totalCount    
-                        edges{
-                            node{
-                            tokenID
-                            essence{
-                                essenceID
-                                name
-                            }
+    let axiosRes;
+    if(cursor == undefined) {
+        axiosRes = await axios({
+            method: httpType,
+            url: endpoint,
+            requestConfig,
+            data: {
+                query: `
+                    query getCollectedEssencesByAddressEVM($address: AddressEVM!){
+                        address(address: $address) {
+                            wallet {
+                                collectedEssences{
+                                    totalCount    
+                                    edges{
+                                        node{
+                                            tokenID
+                                            essence{
+                                                essenceID
+                                                name
+                                            }
+                                        }
+                                        cursor
+                                    }
+                                    pageInfo {
+                                        endCursor
+                                        hasNextPage
+                                    }
+                                }
                             }
                         }
+                    }
+                `,
+                variables: {
+                    // Make sure this is string type as int might cause overflow
+                    address
+                },
+            }
+        });
+    } else {
+        axiosRes = await axios({
+            method: httpType,
+            url: endpoint,
+            requestConfig,
+            data: {
+                query: `
+                    query getCollectedEssencesByAddressEVM($address: AddressEVM!){
+                        address(address: $address) {
+                            wallet {
+                                collectedEssences(first: 10, after: "${cursor}"){
+                                    totalCount    
+                                    edges{
+                                        node{
+                                            tokenID
+                                            essence{
+                                                essenceID
+                                                name
+                                            }
+                                        }
+                                        cursor
+                                    }
+                                    pageInfo {
+                                        endCursor
+                                        hasNextPage
+                                    }
+                                }
+                            }
                         }
                     }
-                    }
-                }
-            `,
-            variables: {
-                // Make sure this is string type as int might cause overflow
-                address
-            },
-        }
-    });
-    return json.data;
+                `,
+                variables: {
+                    // Make sure this is string type as int might cause overflow
+                    address
+                },
+            }
+        });    
+    }
+    let response = axiosRes.data;
+    const collected = response.data.address.wallet.collectedEssences;
+    const endCoursor = collected.pageInfo.endCursor;
+    const hasNext = collected.pageInfo.hasNextPage;
+    const currentEdges = collected.edges;
+    
+    edges.push.apply(edges, currentEdges);
+    if(hasNext) {
+        console.log(`zkcyberconnect request: ${address}. cursor:${endCoursor}, haxNext:${hasNext}, edges:${edges.length}`);
+        return await cyberConnectGraphqlQueryEssencesByCursor(endpoint, httpType, api_key, address, endCoursor, edges)
+    } else {
+        return edges;
+    }
 }

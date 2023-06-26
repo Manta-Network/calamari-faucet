@@ -86,11 +86,11 @@ export const getTokenInfo = async(event) => {
             }
         }
             
-        const endpoint = config.get_endpoint();
-        const provider = new WsProvider(endpoint);
-        const api = await ApiPromise.create({ provider, noInitWarn: true });
-        await Promise.all([ api.isReady, cryptoWaitReady() ]);
-        const queryAllowInfo = await api.query.mantaSbt.evmAccountAllowlist(mintId, ethAddress);
+        // const endpoint = config.get_endpoint();
+        // const provider = new WsProvider(endpoint);
+        // const api = await ApiPromise.create({ provider, noInitWarn: true });
+        // await Promise.all([ api.isReady, cryptoWaitReady() ]);
+        // const queryAllowInfo = await api.query.mantaSbt.evmAccountAllowlist(mintId, ethAddress);
 
         if(is_contract) {
             const endpoint = mintMetadata.metadata.chain_scan_endpoint;
@@ -125,9 +125,9 @@ export const getTokenInfo = async(event) => {
                 console.log(`${token_type} request:${ethAddress}. profile count:${edges.length}`);
                 if(edges != undefined && edges.length > 0) {
                     const profileId = response.data.address.wallet.profiles.edges[0]?.node?.profileID?.toString();
-                    const response2 = await util.cyberConnectGraphqlQueryEssences(extra_meta, ethAddress);
-                    const edges2 = response2.data?.address?.wallet?.collectedEssences?.edges;
-                    console.log(`${token_type} request:${ethAddress}. profileId:${profileId},total:${edges2.length}`);
+                    const edges2 = await util.cyberConnectGraphqlQueryEssences(extra_meta, ethAddress);
+                    // const edges2 = response2.data?.address?.wallet?.collectedEssences?.edges;
+                    console.log(`${token_type} request:${ethAddress}. profileId:${profileId},edges:${edges2?.length}`);
                     if(edges2 != undefined && edges2.length >= 10) {
                         const W3STs = edges2.filter(edge => edge.node?.essence?.name === "Web3 Status Token")
                         console.log(`${token_type} request:${ethAddress}. profileId:${profileId},W3STs:${W3STs.length}`);
@@ -223,7 +223,7 @@ export const getTokenInfo = async(event) => {
             hasBalance,
             callBalance,
             callToken,
-            onchain: queryAllowInfo
+            // onchain: queryAllowInfo
         });
     }
 

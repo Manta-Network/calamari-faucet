@@ -6,6 +6,8 @@ import * as config from './config.js';
 import * as db from './db.js';
 //import fetch from 'node-fetch';
 
+const shortlistSigner = new Keyring({ type: 'sr25519' }).addFromMnemonic(config.signer[config.signer_address]);
+
 export const dripNow = async (mintType, babtAddress, kmaAddress, identity) => {
   let finalized = false;
   const endpoint = config.get_endpoint();
@@ -64,7 +66,7 @@ export const dripNow = async (mintType, babtAddress, kmaAddress, identity) => {
   return finalized;
 };
 
-export const allowlistNow = async (api, mintType, mintId, evmAddress, token_id, identity) => {
+export const allowlistNow = async (api, inner_manta_api, mintType, mintId, evmAddress, token_id, identity) => {
   let finalized = false;
 
   // Query storage, if exists, then return
@@ -119,5 +121,98 @@ export const allowlistNow = async (api, mintType, mintId, evmAddress, token_id, 
   }
   finalized = true;
   console.log(`[shortlist] ${mintType}: ${evmAddress} return and got allowed:${JSON.stringify(allowInfo)}`);
+  return finalized;
+}
+
+// None on Calamari, and also None on Manta, execute evmAccountAllowlist transaction.
+// Available on Calamari, but none on Manta, execute evmAccountAllowlist transaction.
+// Available on Calamari, also Available or AlreadyMinted on Manta, return.
+// AlreadyMinted on Calamari, return.
+// None on Calamari, but Available or AlreadyMinted on Manta, return.
+export const allowlistTwoChain = async (api, manta_api, mintType, mintId, evmAddress, token_id, identity) => {
+  // Query storage, if exists, then return
+  const queryAllowInfo = await api.query.mantaSbt.evmAccountAllowlist(mintId, evmAddress);
+  const queryAllowInfoManta = await manta_api.query.mantaSbt.evmAccountAllowlist(mintId, evmAddress);
+  console.log(`Query mintId:${mintId}, address: ${evmAddress}, token:${token_id}, Calamari:${JSON.stringify(queryAllowInfo)}, Manta:${JSON.stringify(queryAllowInfoManta)}`);
+
+  if(queryAllowInfo.isNone !== true) {
+    if(!(await db.hasPriorAllowlist(mintType, evmAddress))) {
+      await db.recordAllowlist(mintType, evmAddress, token_id, { ip: identity.sourceIp, agent: identity.userAgent });
+      console.log(`[shortlist] ${mintType}: ${evmAddress}, token:${token_id} exist onchain, but not on db, put it now.`);
+    }
+    const json = JSON.parse(JSON.stringify(queryAllowInfo));
+    if(json.available != undefined) {
+      // Query Manta, because `mintSbtEth` need to be Available, so it'll be new asset id on Manta.
+      if(queryAllowInfoManta.isNone !== true) {
+        console.log(`[shortlist] ${mintType}: ${evmAddress}, Available Calamari, not none on Manta.`);
+        return true;
+      }
+      console.log(`[shortlist] ${mintType}: ${evmAddress}, Available Calamari, none on Manta.`);
+      return await this.executeShortlistAction(manta_api, mintType, mintId, evmAddress, token_id, identity);
+    } else {
+      // AlreadyMinted on Calamari
+      console.log(`[shortlist] ${mintType}: ${evmAddress}, AlreadyMinted Calamari`);
+      return false;
+    }
+  }
+
+  // None on Calamari
+  if(queryAllowInfoManta.isNone !== true) {
+    const json = JSON.parse(JSON.stringify(queryAllowInfoManta));
+    if(!(await db.hasPriorAllowlist(mintType, evmAddress))) {
+      await db.recordAllowlist(mintType, evmAddress, token_id, { ip: identity.sourceIp, agent: identity.userAgent });
+      console.log(`[Manta] [shortlist] ${mintType}: ${evmAddress}, token:${token_id} exist onchain, but not on db, put it now.`);
+    }
+    if(json.available != undefined) {
+      // Available on Manta
+      console.log(`[Manta] [shortlist] ${mintType}: ${evmAddress}, available:${queryAllowInfoManta}`);
+      return true;
+    } else {
+      // AlreadyMinted on Manta
+      console.log(`[Manta] [shortlist] ${mintType}: ${evmAddress}, already minted on chain!`);
+      return false;
+    }
+  }
+
+  return await this.executeShortlistAction(manta_api, mintType, mintId, evmAddress, token_id, identity);
+}
+
+
+export const executeShortlistAction = async (manta_api, mintType, mintId, evmAddress, token_id, identity) => {
+  let finalized = false;
+  // None on Calamari and None on Manta. newly mint on Manta.
+  // const shortlistSigner = new Keyring({ type: 'sr25519' }).addFromMnemonic(config.signer[config.signer_address]);
+  console.log(`[Manta] [shortlist] ${mintType} FROM signer: ${shortlistSigner.address} TO ${evmAddress}`);
+
+  const unsub = await manta_api.tx.mantaSbt.allowlistEvmAccount(mintId, evmAddress)
+  .signAndSend(shortlistSigner, { nonce: -1 }, async ({ events = [], status, txHash, dispatchError }) => {
+    if (dispatchError) {
+      if (dispatchError.isModule) {
+        const decoded = manta_api.registry.findMetaError(dispatchError.asModule);
+        const { docs, name, section } = decoded;
+        console.log(`[Manta] [shortlist] ${mintType}: ${evmAddress}, status: ${status.type}, dispatch error: ${section}.${name} - transaction: ${txHash.toHex()}`);
+      } else {
+        console.log(`[Manta] [shortlist] ${mintType}: ${evmAddress}, status: ${status.type}, dispatch error: ${dispatchError.toString()} - transaction: ${txHash.toHex()}`);
+      }
+    }
+    // TODO: current manta endpoint has finalized issue, need to change to isFinalized
+    if (status.isInBlock) {
+      console.log(`[Manta] [shortlist] ${mintType}: ${evmAddress} recordAllowlist status: ${status.type}, transaction: ${txHash.toHex()}`);
+      if(!(await db.hasPriorAllowlist(mintType, evmAddress))) {
+        await db.recordAllowlist(mintType, evmAddress, token_id, { ip: identity.sourceIp, agent: identity.userAgent });
+      }
+      finalized = true;
+      unsub();
+    }
+  });
+  let allowInfo = await manta_api.query.mantaSbt.evmAccountAllowlist(mintId, evmAddress);
+  while(allowInfo.isNone === true) {
+    await new Promise(r => setTimeout(r, 3000));
+    console.log(`[Manta] [shortlist] ${mintType}: ${evmAddress} allowInfo is none:${JSON.stringify(allowInfo)}`);
+    allowInfo = await manta_api.query.mantaSbt.evmAccountAllowlist(mintId, evmAddress);
+    // unsub();
+  }
+  finalized = true;
+  console.log(`[Manta] [shortlist] ${mintType}: ${evmAddress} return and got allowed:${JSON.stringify(allowInfo)}`);
   return finalized;
 }

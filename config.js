@@ -1,7 +1,10 @@
 export const endpoint = {
     testing: 'wss://blockchain.zqhxuyuan.cloud:444',
-    staging: 'wss://calamari.seabird.systems',
+    testing_manta: 'wss://blockchain.zqhxuyuan.cloud:444',
+    staging: 'wss://a1.calamari.seabird.systems',
+    staging_manta: 'wss://blockchain.zqhxuyuan.cloud:444',
     calamari: 'wss://calamari.systems',
+    manta: 'wss://ws.manta.systems',
 };
 
 // NOTE, change to 1 in staging/production
@@ -30,6 +33,17 @@ export const get_endpoint = () => {
         return endpoint.testing;
     } else {
         return endpoint.calamari;
+    }
+}
+
+export const get_endpoint_manta = () => {
+    const env = process.env.stage_env;
+    if(env === "staging") {
+        return endpoint.staging_manta;
+    } else if(env === "testing") {
+        return endpoint.testing_manta;
+    } else {
+        return endpoint.manta;
     }
 }
 

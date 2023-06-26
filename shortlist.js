@@ -7,6 +7,7 @@ import * as action from "./action.js";
 import axios from 'axios';
 
 var api;
+var mantaApi;
 
 export const shortlist = async (event) => {
     const payload = JSON.parse(event.body);
@@ -59,17 +60,26 @@ export const shortlist = async (event) => {
         // The whitelist process is first insert user's address into database
         // but not insert into on-chain storage. so in this case, only user request
         // this api, then the address will be insert into on-chain storage.
-        if (is_whitelist || mintType == "zktaskon" || mintType == "zkfrontier") {
-            // whitelist, token default is "0x00"
-            await onchainAction(event, mintType, mint_id, ethAddress, token);
-        } else if(getDbPrior.length > 0) {
-            // none-whitelist case normally has this `allowlist` array, because it's insert after onchain action.
-            const tokenId = getDbPrior[0]["allowlist"][0]["token_id"];
-            if(tokenId != undefined) {
-                token = tokenId;
-            }
-            if(tokenId == 0) {
-                token = "0x00";
+        // if (is_whitelist || mintType == "zktaskon" || mintType == "zkfrontier") {
+        //     // whitelist, token default is "0x00"
+        //     await onchainAction(event, mintType, mint_id, ethAddress, token);
+        // } else if(getDbPrior.length > 0) {
+        //     // none-whitelist case normally has this `allowlist` array, because it's insert after onchain action.
+        //     const tokenId = getDbPrior[0]["allowlist"][0]["token_id"];
+        //     if(tokenId != undefined) {
+        //         token = tokenId;
+        //     }
+        //     if(tokenId == 0) {
+        //         token = "0x00";
+        //     }
+        // }
+
+        await onchainAction(event, mintType, mint_id, ethAddress, token);
+        const allowlist = getDbPrior[0]?.allowlist;
+        if(allowlist != undefined && allowlist.length >= 0) {
+            const oneToken = allowlist[0]?.token_id;
+            if(oneToken != undefined && oneToken != 0) {
+                token = oneToken;
             }
         }
         status = 'prior-allow-observed';
@@ -218,17 +228,12 @@ export const onchainAction = async(event, mintType, mintId, ethAddress, tokenId)
     let status = "";
     const identity = (!!event.requestContext) ? event.requestContext.identity : undefined;
 
-    // const endpoint = config.get_endpoint();
-    // const provider = new WsProvider(endpoint);
-    // const api = await ApiPromise.create({ provider, noInitWarn: true });
-    // await Promise.all([ api.isReady, cryptoWaitReady() ]);
-    // console.log("connected api.")
-
     let inner_api = await global_api();
+    let inner_manta_api = await global_manta_api();
     console.log(new Date() + " connected api..");
 
     try {
-        const tx_flag = await action.allowlistNow(inner_api, mintType, mintId, ethAddress, tokenId, identity);
+        const tx_flag = await action.allowlistTwoChain(inner_api, inner_manta_api, mintType, mintId, ethAddress, tokenId, identity);
         if (tx_flag === true) {
             status = 'allow-success';
         } else {
@@ -236,13 +241,7 @@ export const onchainAction = async(event, mintType, mintId, ethAddress, tokenId)
         }
     } catch(error) {
         console.log("onchain error:", error);
-        inner_api = await global_api();
-        const tx_flag = await action.allowlistNow(inner_api, mintType, mintId, ethAddress, tokenId, identity);
-        if (tx_flag === true) {
-            status = 'allow-success';
-        } else {
-            status = 'allow-fail';
-        }
+        status = 'allow-fail';
     }
     return status;
 }
@@ -260,3 +259,17 @@ export const global_api = async() => {
 
   return api;
 }
+
+export const global_manta_api = async() => {
+    if(mantaApi != undefined) {
+      return mantaApi;
+    }
+    const endpoint = config.get_endpoint_manta();
+    const provider = new WsProvider(endpoint);
+    mantaApi = await ApiPromise.create({ provider, noInitWarn: true });
+    await Promise.all([ mantaApi.isReady, cryptoWaitReady() ]);
+  
+    console.log(new Date() + " connected a new manta api." + endpoint)
+  
+    return mantaApi;
+  }

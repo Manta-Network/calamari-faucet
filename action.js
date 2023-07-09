@@ -6,7 +6,7 @@ import * as config from './config.js';
 import * as db from './db.js';
 //import fetch from 'node-fetch';
 
-const shortlistSigner = new Keyring({ type: 'sr25519' }).addFromMnemonic(config.signer[config.signer_address]);
+// const shortlistSigner = new Keyring({ type: 'sr25519' }).addFromMnemonic(config.signer[config.signer_address]);
 
 export const dripNow = async (mintType, babtAddress, kmaAddress, identity) => {
   let finalized = false;
@@ -148,7 +148,7 @@ export const allowlistTwoChain = async (api, manta_api, mintType, mintId, evmAdd
         return true;
       }
       console.log(`[shortlist] ${mintType}: ${evmAddress}, Available Calamari, none on Manta.`);
-      return await this.executeShortlistAction(manta_api, mintType, mintId, evmAddress, token_id, identity);
+      return await executeShortlistAction(manta_api, mintType, mintId, evmAddress, token_id, identity);
     } else {
       // AlreadyMinted on Calamari
       console.log(`[shortlist] ${mintType}: ${evmAddress}, AlreadyMinted Calamari`);
@@ -174,14 +174,13 @@ export const allowlistTwoChain = async (api, manta_api, mintType, mintId, evmAdd
     }
   }
 
-  return await this.executeShortlistAction(manta_api, mintType, mintId, evmAddress, token_id, identity);
+  return await executeShortlistAction(manta_api, mintType, mintId, evmAddress, token_id, identity);
 }
-
 
 export const executeShortlistAction = async (manta_api, mintType, mintId, evmAddress, token_id, identity) => {
   let finalized = false;
   // None on Calamari and None on Manta. newly mint on Manta.
-  // const shortlistSigner = new Keyring({ type: 'sr25519' }).addFromMnemonic(config.signer[config.signer_address]);
+  const shortlistSigner = new Keyring({ type: 'sr25519' }).addFromMnemonic(config.signer[config.signer_address]);
   console.log(`[Manta] [shortlist] ${mintType} FROM signer: ${shortlistSigner.address} TO ${evmAddress}`);
 
   const unsub = await manta_api.tx.mantaSbt.allowlistEvmAccount(mintId, evmAddress)

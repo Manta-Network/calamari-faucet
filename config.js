@@ -1,8 +1,8 @@
 export const endpoint = {
     testing: 'wss://blockchain.zqhxuyuan.cloud:444',
-    testing_manta: 'wss://blockchain.zqhxuyuan.cloud:444',
-    staging: 'wss://a1.calamari.seabird.systems',
-    staging_manta: 'wss://blockchain.zqhxuyuan.cloud:444',
+    testing_manta: 'wss://pomp.zqhxuyuan.cloud:444',
+    staging: 'wss://blockchain.zqhxuyuan.cloud:444',
+    staging_manta: 'wss://pomp.zqhxuyuan.cloud:555',
     calamari: 'wss://calamari.systems',
     manta: 'wss://ws.manta.systems',
 };

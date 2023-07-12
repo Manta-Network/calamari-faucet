@@ -186,6 +186,18 @@ export const getTokenInfo = async(event) => {
                         break;
                     }                
                 }
+            } else if(token_type == "zkgetaverse") {
+                const contracts = [extra_meta.contract_address, extra_meta.contract_address1, extra_meta.contract_address2, extra_meta.contract_address3];
+                const endpoints = [extra_meta.chain_scan_endpoint, extra_meta.chain_scan_endpoint1, extra_meta.chain_scan_endpoint2, extra_meta.chain_scan_endpoint3];
+                for(var i=0;i<contracts.length;i++) {
+                    const call_result = await util.ethCall(endpoints[i], contracts[i], extra_meta.balance_call_name, [ethAddress]);
+                    const balance = call_result.result;
+                    console.log(`${mintType}: ${ethAddress} call-${i}: ${balance}`);
+                    if (balance != null && balance !== config.contract_zero_balance && balance != config.contract_zero_balance0) {
+                        hasBalance = true;
+                        break;
+                    }                
+                }
             } else if(token_type == "zkfuturist") {
                 const data = await db.getPartnerMetadata(token_type);
                 const metadata = data.metadata;

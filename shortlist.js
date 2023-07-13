@@ -152,7 +152,7 @@ export const shortlist = async (event) => {
                 const balance = call_result.result;
                 if (balance != null && balance !== config.contract_zero_balance) {
                     addressHasBalance = true;
-                }    
+                }
             }
         } else if(mintType == "zkfrontier") {
             const contracts = [extra_meta.contract_address, extra_meta.contract_address1, extra_meta.contract_address2, extra_meta.contract_address3, extra_meta.contract_address4];
@@ -164,9 +164,22 @@ export const shortlist = async (event) => {
                 if (balance != null && balance !== config.contract_zero_balance && balance != config.contract_zero_balance0) {
                     addressHasBalance = true;
                     break;
-                }                
+                }
             }
-        }  else if(mintType == "zkfuturist") {
+        } else if(mintType == "zkgetaverse") {
+            const contracts = [extra_meta.contract_address, extra_meta.contract_address1, extra_meta.contract_address2, extra_meta.contract_address3];
+            const endpoints = [extra_meta.chain_scan_endpoint, extra_meta.chain_scan_endpoint1, extra_meta.chain_scan_endpoint2, extra_meta.chain_scan_endpoint3];
+            for(var i=0;i<contracts.length;i++) {
+                const contract = contracts[i];
+                const call_result = await util.ethCall(endpoints[i], contract, extra_meta.balance_call_name, [ethAddress]);
+                const balance = call_result.result;
+                console.log(`${mintType}: ${ethAddress} call-${i}-${contract}: ${balance}`);
+                if (balance != null && balance !== config.contract_zero_balance && balance != config.contract_zero_balance0) {
+                    addressHasBalance = true;
+                    break;
+                }
+            }
+        } else if(mintType == "zkfuturist") {
             const data = await db.getPartnerMetadata(mintType);
             const metadata = data.metadata;
             const check_url = metadata.check_url;

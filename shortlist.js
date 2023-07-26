@@ -112,18 +112,23 @@ export const shortlist = async (event) => {
             if(edges != undefined && edges.length > 0) {
                 // Get first profile id as final token name passing to frontend.
                 const profileId = response.data.address.wallet.profiles.edges[0]?.node?.profileID;
-                const edges2 = await util.cyberConnectGraphqlQueryEssences(extra_meta, ethAddress);
+                const eligible = await util.cyberConnectGraphqlQueryEssences(extra_meta, ethAddress);
+                console.log(`${token_type} request:${ethAddress}. profileId:${profileId},eligible:${eligible}`);
+                if(eligible) {
+                    addressHasBalance = true;
+                    token = profileId.toString();
+                }
                 // const edges2 = response2.data?.address?.wallet?.collectedEssences?.edges;
                 // We have condition that only 10+ W3STs name must be qualified.
-                console.log(`${token_type} request:${ethAddress}. profileId:${profileId},total:${edges2?.length}`);
-                if(edges2 != undefined && edges2.length >= 10) {
-                    const W3STs = edges2.filter(edge => edge.node?.essence?.name === "Web3 Status Token")
-                    console.log(`${token_type} request:${ethAddress}. profileId:${profileId},W3STs:${W3STs.length}`);
-                    if(W3STs.length >= 10) {
-                        addressHasBalance = true;
-                        token = profileId.toString();
-                    }
-                }
+                // console.log(`${token_type} request:${ethAddress}. profileId:${profileId},total:${edges2?.length}`);
+                // if(edges2 != undefined && edges2.length >= 10) {
+                //     const W3STs = edges2.filter(edge => edge.node?.essence?.name === "Web3 Status Token")
+                //     console.log(`${token_type} request:${ethAddress}. profileId:${profileId},W3STs:${W3STs.length}`);
+                //     if(W3STs.length >= 10) {
+                //         addressHasBalance = true;
+                //         token = profileId.toString();
+                //     }
+                // }
             }
         } else if(mintType == "zkultiverse") {
             const response = await util.customizGetCall(extra_meta, mintType, ethAddress);
@@ -167,19 +172,33 @@ export const shortlist = async (event) => {
                 }
             }
         } else if(mintType == "zkgetaverse") {
-            const contracts = [extra_meta.contract_address, extra_meta.contract_address1, extra_meta.contract_address2, extra_meta.contract_address3];
-            const endpoints = [extra_meta.chain_scan_endpoint, extra_meta.chain_scan_endpoint1, extra_meta.chain_scan_endpoint2, extra_meta.chain_scan_endpoint3];
+            const contracts = [extra_meta.contract_address, extra_meta.contract_address4, extra_meta.contract_address1, extra_meta.contract_address2, extra_meta.contract_address3];
+            const endpoints = [extra_meta.chain_scan_endpoint, extra_meta.chain_scan_endpoint4, extra_meta.chain_scan_endpoint1, extra_meta.chain_scan_endpoint2, extra_meta.chain_scan_endpoint3];
             for(var i=0;i<contracts.length;i++) {
                 const contract = contracts[i];
                 const call_result = await util.ethCall(endpoints[i], contract, extra_meta.balance_call_name, [ethAddress]);
                 const balance = call_result.result;
                 console.log(`${mintType}: ${ethAddress} call-${i}-${contract}: ${balance}`);
-                if (balance != null && balance !== config.contract_zero_balance && balance != config.contract_zero_balance0) {
+                if (balance != undefined && balance != null && balance !== config.contract_zero_balance && balance != config.contract_zero_balance0) {
+                    addressHasBalance = true;
+                    break;
+                }
+            }    
+        } else if(mintType == "zkkaratdao" || mintType == "zkburgercities") {
+            const contracts = extra_meta.contract_address;
+            const endpoint = extra_meta.chain_scan_endpoint;
+            for(var i=0;i<contracts.length;i++) {
+                const contract = contracts[i];
+                const call_result = await util.ethCall(endpoint, contract, extra_meta.balance_call_name, [ethAddress]);
+                const balance = call_result.result;
+                console.log(`${mintType}: ${ethAddress} call-${i}-${contract}: ${balance}`);
+                if (balance != undefined && balance != null && balance !== config.contract_zero_balance && balance != config.contract_zero_balance0) {
                     addressHasBalance = true;
                     break;
                 }
             }
-        } else if(mintType == "zkfuturist") {
+        } 
+        else if(mintType == "zkfuturist") {
             const data = await db.getPartnerMetadata(mintType);
             const metadata = data.metadata;
             const check_url = metadata.check_url;

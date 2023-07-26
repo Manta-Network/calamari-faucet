@@ -172,11 +172,10 @@ export const cyberConnectGraphqlQueryEssences = async (metadata, address) => {
     const endpoint = metadata.httpUrl;
     const httpType = metadata.httpType;
     const api_key = metadata["X-API-KEY"];
-    const edges = await cyberConnectGraphqlQueryEssencesByCursor(endpoint, httpType, api_key, address);
-    return edges;
+    return await cyberConnectGraphqlQueryEssencesByCursor(endpoint, httpType, api_key, address);
 }
 
-export const cyberConnectGraphqlQueryEssencesByCursor = async (endpoint, httpType, api_key, address, cursor = undefined, edges = []) => {
+export const cyberConnectGraphqlQueryEssencesByCursor = async (endpoint, httpType, api_key, address, cursor = undefined, count = 0) => {
     const requestConfig = {
         headers: {
             'Content-Type': 'application/json',
@@ -264,12 +263,24 @@ export const cyberConnectGraphqlQueryEssencesByCursor = async (endpoint, httpTyp
     const endCoursor = collected.pageInfo.endCursor;
     const hasNext = collected.pageInfo.hasNextPage;
     const currentEdges = collected.edges;
+
+    if(currentEdges != undefined && currentEdges.length > 0) {
+        const W3STs = currentEdges.filter(edge => edge.node?.essence?.name === "Web3 Status Token");
+        if(W3STs != undefined && W3STs.length > 0) {
+            count += W3STs.length;
+        }
+        if(count >= 10) {
+            console.log(`zkcyberconnect [0] request: ${address}. cursor:${endCoursor}, haxNext:${hasNext}, count:${count}`);
+            return true;
+        }
+    }
     
-    edges.push.apply(edges, currentEdges);
-    if(hasNext) {
-        console.log(`zkcyberconnect request: ${address}. cursor:${endCoursor}, haxNext:${hasNext}, edges:${edges.length}`);
-        return await cyberConnectGraphqlQueryEssencesByCursor(endpoint, httpType, api_key, address, endCoursor, edges)
+    // edges.push.apply(edges, currentEdges);
+    if(hasNext && count < 10) {
+        console.log(`zkcyberconnect [1] request: ${address}. cursor:${endCoursor}, haxNext:${hasNext}, count:${count}`);
+        return await cyberConnectGraphqlQueryEssencesByCursor(endpoint, httpType, api_key, address, endCoursor, count)
     } else {
-        return edges;
+        console.log(`zkcyberconnect [2] request: ${address}. cursor:${endCoursor}, haxNext:${hasNext}, count:${count}`);
+        return count >= 10;
     }
 }

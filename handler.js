@@ -111,6 +111,10 @@ export const getPartnerMetadata = async (event) => {
   return await adminOps.getPartnerMetadata(event);
 }
 
+export const queryContract = async (event) => {
+  return await adminOps.queryContract(event);
+}
+
 export const refreshQuestToken = async() => {
   const token_type = "zkfuturist";
   const parter_data = await db.getPartnerMetadata(token_type);

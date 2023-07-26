@@ -125,18 +125,23 @@ export const getTokenInfo = async(event) => {
                 console.log(`${token_type} request:${ethAddress}. profile count:${edges.length}`);
                 if(edges != undefined && edges.length > 0) {
                     const profileId = response.data.address.wallet.profiles.edges[0]?.node?.profileID?.toString();
-                    const edges2 = await util.cyberConnectGraphqlQueryEssences(extra_meta, ethAddress);
-                    // const edges2 = response2.data?.address?.wallet?.collectedEssences?.edges;
-                    console.log(`${token_type} request:${ethAddress}. profileId:${profileId},edges:${edges2?.length}`);
-                    if(edges2 != undefined && edges2.length >= 10) {
-                        const W3STs = edges2.filter(edge => edge.node?.essence?.name === "Web3 Status Token")
-                        console.log(`${token_type} request:${ethAddress}. profileId:${profileId},W3STs:${W3STs.length}`);
-                        if(W3STs.length >= 10) {
-                            callToken = profileId;
-                            callBalance = 1;
-                            hasBalance = true;
-                        }
+                    const eligible = await util.cyberConnectGraphqlQueryEssences(extra_meta, ethAddress);
+                    if(eligible) {
+                        callToken = profileId;
+                        callBalance = 1;
+                        hasBalance = true;
                     }
+                    // const edges2 = response2.data?.address?.wallet?.collectedEssences?.edges;
+                    // console.log(`${token_type} request:${ethAddress}. profileId:${profileId},edges:${edges2?.length}`);
+                    // if(edges2 != undefined && edges2.length >= 10) {
+                    //     const W3STs = edges2.filter(edge => edge.node?.essence?.name === "Web3 Status Token")
+                    //     console.log(`${token_type} request:${ethAddress}. profileId:${profileId},W3STs:${W3STs.length}`);
+                    //     if(W3STs.length >= 10) {
+                    //         callToken = profileId;
+                    //         callBalance = 1;
+                    //         hasBalance = true;
+                    //     }
+                    // }
                 }
             } else if(token_type == "zkultiverse") {
                 // ultiverse: https://assets-api.ultiverse.io/api/v1/holder/state?address=0xef1168293649dc1a31f264f5ba7f88b8c0894db4
@@ -198,6 +203,19 @@ export const getTokenInfo = async(event) => {
                         break;
                     }                
                 }
+            } else if(token_type == "zkkaratdao") {
+                const contracts = extra_meta.contract_address;
+                const endpoint = extra_meta.chain_scan_endpoint;
+                for(var i=0;i<contracts.length;i++) {
+                    const contract = contracts[i];
+                    const call_result = await util.ethCall(endpoint, contract, extra_meta.balance_call_name, [ethAddress]);
+                    const balance = call_result.result;
+                    console.log(`${token_type}: ${ethAddress} call-${i}-${contract}: ${balance}`);
+                    if (balance != undefined && balance != null && balance !== config.contract_zero_balance && balance != config.contract_zero_balance0) {
+                        hasBalance = true;
+                        break;
+                    }
+                }
             } else if(token_type == "zkfuturist") {
                 const data = await db.getPartnerMetadata(token_type);
                 const metadata = data.metadata;
@@ -240,6 +258,24 @@ export const getTokenInfo = async(event) => {
     }
 
     return util.response_data(results);
+}
+
+export const queryContract = async(event) => {
+    const payload = JSON.parse(event.body);
+    const ethAddress = payload.address.toLowerCase();
+    const key = payload.key;
+    const decrypt = util.hashCode(key);
+    if (decrypt != config.adminKeyHash) {
+        return util.response_data({msg: "key not right!"});
+    }
+
+    const endpoint = payload.endpoint;
+    const contract = payload.contract;
+    const method = payload.method;
+    
+    const call_result = await util.ethCall(endpoint, contract, method, [ethAddress]);
+
+    return util.response_data(call_result);
 }
 
 export const shortlistChain = async (event) => {
